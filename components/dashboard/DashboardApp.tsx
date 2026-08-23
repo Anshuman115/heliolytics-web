@@ -31,7 +31,7 @@ export type DashboardData = {
 type DashboardAppProps = DashboardData & { demo?: boolean };
 const TABS = ['overview', 'sleep', 'activity', 'vitals'] as const;
 type Tab = (typeof TABS)[number];
-const RANGES = [7, 30, 90] as const;
+const RANGES = [7, 30] as const;
 type Range = (typeof RANGES)[number];
 
 const TAB_LABELS: Record<Tab, string> = {

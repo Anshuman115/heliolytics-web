@@ -53,11 +53,26 @@ export type TemperatureSample = {
   celsius: number;
 };
 
+export type TemperatureDayCompact = {
+  dayKey: string;
+  startTime: string;
+  offsets: number[];
+  values: number[];
+};
+
 export type SeriesSample = {
   metric: string;
   dayKey: string;
   sampledAt: string;
   value: number;
+};
+
+export type SeriesDayCompact = {
+  metric: string;
+  dayKey: string;
+  startTime: string;
+  offsets: number[];
+  values: number[];
 };
 
 /** Alias of SeriesSample — the canonical name used across the dashboard. */

@@ -1,4 +1,5 @@
 import { apiGet } from './client';
+import { flattenSeriesDays, flattenTemperatureDays } from './compact';
 import { API_ENDPOINTS, METRICS_DAYS, WORKOUT_DAYS } from './endpoints';
 import type {
   ActivitySessionMetric,
@@ -6,9 +7,11 @@ import type {
   HeartRateDayCompact,
   HeartRateSample,
   SeriesSample,
+  SeriesDayCompact,
   SleepMetric,
   SyncCoverage,
   TemperatureSample,
+  TemperatureDayCompact,
   WorkoutMetric,
 } from './types';
 
@@ -61,18 +64,18 @@ export async function fetchWorkouts(): Promise<WorkoutMetric[]> {
 
 export async function fetchTemperature(): Promise<TemperatureSample[]> {
   const { from, to } = range(METRICS_DAYS);
-  const body = await apiGet<{ samples: TemperatureSample[] }>(
+  const body = await apiGet<{ days: TemperatureDayCompact[] }>(
     `${API_ENDPOINTS.temperature}?from=${from}&to=${to}`,
   );
-  return body.samples ?? [];
+  return flattenTemperatureDays(body.days ?? []);
 }
 
 export async function fetchSeries(): Promise<SeriesSample[]> {
   const { from, to } = range(METRICS_DAYS);
-  const body = await apiGet<{ samples: SeriesSample[] }>(
+  const body = await apiGet<{ days: SeriesDayCompact[] }>(
     `${API_ENDPOINTS.series}?from=${from}&to=${to}`,
   );
-  return body.samples ?? [];
+  return flattenSeriesDays(body.days ?? []);
 }
 
 export async function fetchActivitySessions(): Promise<ActivitySessionMetric[]> {
