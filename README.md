@@ -14,8 +14,8 @@ reading from the Heliolytics Go API over a server-signed, HMAC-authenticated cha
 - **Secret-safe API access** — every backend call is **HMAC-signed in a server component /
   route handler**; the signing secret never reaches the browser. The client only ever sees
   rendered data.
-- **Auth at the edge** — `middleware.ts` gates every route, redirecting unauthenticated
-  requests to `/login`; password login is rate-limited with a signed, 7-day session cookie.
+- **Auth at the edge** — `middleware.ts` gates every route. Passwords use scrypt and
+  browser sessions use a separate HMAC secret with rolling expiry.
 - **App Router, server-first** — data is fetched in React Server Components, so the
   dashboard ships minimal client JS and never exposes API internals.
 - **Typed data layer** — a small typed Go-API client (`lib/api`) mirrors the backend's
@@ -57,7 +57,8 @@ HMAC-SHA256 request signing · Docker
 
 | Variable | Description |
 |----------|-------------|
-| `HELIOLYTICS_WEB_PASSWORD` | Dashboard login password |
+| `HELIOLYTICS_WEB_PASSWORD_HASH` | Scrypt dashboard password verifier |
+| `HELIOLYTICS_SESSION_SECRET` | Independent browser-session HMAC secret |
 | `HELIOLYTICS_SIGNING_SECRET` | HMAC secret shared with the Go API |
 | `API_INTERNAL_URL` | Go API base URL (default `http://localhost:8080`) |
 | `COOKIE_SECURE` | `true` in production to enforce HTTPS-only cookies |
@@ -70,10 +71,12 @@ Set these in the deployment environment (Vercel / Docker) — never commit them.
 
 ```bash
 export HELIOLYTICS_SIGNING_SECRET=your-api-secret
-export HELIOLYTICS_WEB_PASSWORD=your-web-password
+export HELIOLYTICS_WEB_PASSWORD_HASH='paste npm run auth:hash-password output'
+export HELIOLYTICS_SESSION_SECRET='paste openssl rand -hex 32 output'
 export API_INTERNAL_URL=http://localhost:8080
 
 npm install
+npm run auth:hash-password
 npm run dev          # http://localhost:3000
 ```
 

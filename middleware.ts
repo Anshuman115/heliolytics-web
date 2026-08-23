@@ -1,11 +1,38 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { safeRedirectPath } from '@/lib/auth/login_guard';
-import { SESSION_COOKIE, verifySessionValue } from '@/lib/auth/session';
+import { sessionCookieSecure } from '@/lib/auth/cookie_options';
+import {
+  renewSessionValue,
+  SESSION_COOKIE,
+  type SessionVerification,
+  verifySessionValue,
+} from '@/lib/auth/session';
 
-async function isAuthed(request: NextRequest): Promise<boolean> {
+async function readSession(request: NextRequest): Promise<SessionVerification> {
+  if (!process.env.HELIOLYTICS_WEB_PASSWORD_HASH) return { valid: false };
   const token = request.cookies.get(SESSION_COOKIE)?.value;
-  return verifySessionValue(token ?? '', process.env.HELIOLYTICS_WEB_PASSWORD);
+  return verifySessionValue(token ?? '', process.env.HELIOLYTICS_SESSION_SECRET);
+}
+
+async function applyRenewal(
+  response: NextResponse,
+  request: NextRequest,
+  session: SessionVerification,
+): Promise<NextResponse> {
+  const secret = process.env.HELIOLYTICS_SESSION_SECRET;
+  if (!secret) return response;
+  const renewal = await renewSessionValue(session, secret);
+  if (renewal) {
+    response.cookies.set(SESSION_COOKIE, renewal.value, {
+      httpOnly: true,
+      secure: sessionCookieSecure(request),
+      sameSite: 'lax',
+      maxAge: renewal.maxAge,
+      path: '/',
+    });
+  }
+  return response;
 }
 
 export async function middleware(request: NextRequest) {
@@ -21,17 +48,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const authed = await isAuthed(request);
+  const session = await readSession(request);
 
   if (pathname.startsWith('/login')) {
-    if (authed) {
+    if (session.valid) {
       const from = safeRedirectPath(request.nextUrl.searchParams.get('from'));
-      return NextResponse.redirect(new URL(from, request.url));
+      return applyRenewal(
+        NextResponse.redirect(new URL(from, request.url)),
+        request,
+        session,
+      );
     }
     return NextResponse.next();
   }
 
-  if (authed) return NextResponse.next();
+  if (session.valid) {
+    return applyRenewal(NextResponse.next(), request, session);
+  }
 
   const login = new URL('/login', request.url);
   if (pathname !== '/') login.searchParams.set('from', pathname);

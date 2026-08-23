@@ -1,10 +1,10 @@
 import { cookies } from 'next/headers';
 import {
   createSessionValue,
-  passwordsMatch,
   SESSION_COOKIE,
-  SESSION_MAX_AGE_SEC,
+  SESSION_IDLE_SEC,
 } from '@/lib/auth/session';
+import { verifyPassword } from '@/lib/auth/password';
 import { sessionCookieSecure } from '@/lib/auth/cookie_options';
 import { loginRateLimited } from '@/lib/auth/login_guard';
 
@@ -13,8 +13,9 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
   }
 
-  const configured = process.env.HELIOLYTICS_WEB_PASSWORD;
-  if (!configured) {
+  const passwordHash = process.env.HELIOLYTICS_WEB_PASSWORD_HASH;
+  const sessionSecret = process.env.HELIOLYTICS_SESSION_SECRET;
+  if (!passwordHash || !sessionSecret) {
     return Response.json({ error: 'Web login is not configured on the server' }, { status: 503 });
   }
 
@@ -26,15 +27,20 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  if (!passwordsMatch(password, configured)) {
+  if (!(await verifyPassword(password, passwordHash))) {
     return Response.json({ error: 'Wrong password' }, { status: 401 });
   }
 
-  cookies().set(SESSION_COOKIE, await createSessionValue(configured), {
+  const sessionValue = await createSessionValue(sessionSecret);
+  if (!sessionValue) {
+    return Response.json({ error: 'Web login is not configured on the server' }, { status: 503 });
+  }
+
+  cookies().set(SESSION_COOKIE, sessionValue, {
     httpOnly: true,
     secure: sessionCookieSecure(request),
     sameSite: 'lax',
-    maxAge: SESSION_MAX_AGE_SEC,
+    maxAge: SESSION_IDLE_SEC,
     path: '/',
   });
 

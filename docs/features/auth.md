@@ -1,124 +1,78 @@
-# Feature — Auth
+# Feature: Auth
 
-Single shared password. No user accounts, no Firebase, no OAuth — this is a
-one-owner dashboard.
+This is a single-owner dashboard. It has one human password, no user accounts,
+and no OAuth provider.
 
-> Any note claiming Firebase Auth is wrong. There is no `firebase` dependency.
+## Three separate secrets
 
-## Two different secrets
-
-Don't confuse them:
-
-| Secret | Guards | Used by |
+| Variable | Purpose | Shared with |
 |---|---|---|
-| `HELIOLYTICS_WEB_PASSWORD` | Human → dashboard | `lib/auth/` |
-| `HELIOLYTICS_SIGNING_SECRET` | Server → Go API | `lib/api/signing.ts` |
+| `HELIOLYTICS_WEB_PASSWORD_HASH` | Verify the human password | Nobody |
+| `HELIOLYTICS_SESSION_SECRET` | Sign browser sessions | Nobody |
+| `HELIOLYTICS_SIGNING_SECRET` | Sign Web-to-Go requests | Go API |
 
-The password logs a person in. The signing secret authenticates the Next.js server
-to the backend. A browser never sees either.
+Never reuse one value for another purpose. None of these values may reach a
+browser bundle.
 
-## Session cookie
+## Password verification
 
-`lib/auth/session.ts`:
+`lib/auth/password.ts` accepts only this format:
 
-```
-SESSION_COOKIE   = 'heliolytics_session'
-SESSION_MAX_AGE_SEC = 7 * 24 * 60 * 60   // 7 days
-```
-
-The cookie value is an **HMAC-signed expiry**, not a random session ID — there's no
-session store. The server signs `exp` with the password via `crypto.subtle` HMAC-
-SHA256; verification recomputes and compares. Tampering with `exp` invalidates the
-signature.
-
-Comparison is `timingSafeEqual` — a hand-rolled constant-time compare, because a
-naive `===` on the signature leaks bytes through timing.
-
-This runs on the **Edge runtime** (middleware), which is why it uses `crypto.subtle`
-rather than Node's `crypto`.
-
-## Middleware
-
-`middleware.ts` gates everything by default. Public prefixes:
-
-- `/api/auth` — login/logout must be reachable while logged out
-- `/_next` — framework assets
-- `/demo`, `/about` — deliberately public
-
-Behavior:
-
-- Authed + hitting `/login` → redirect to `from` (or `/`)
-- Unauthed + hitting anything else → redirect to `/login?from=<path>`
-- The `from` param passes through `safeRedirectPath` (`lib/auth/login_guard.ts`)
-
-### Why `safeRedirectPath` exists
-
-It's an **open-redirect guard**. Without it, `/login?from=https://evil.example` would
-bounce a freshly-authenticated user to an attacker's site. It only accepts a path
-starting with a single `/` — rejecting both absolute URLs and protocol-relative
-`//evil.example`, which browsers resolve as a remote host. Don't route around it.
-
-Matcher: `['/((?!_next/static|_next/image|favicon.ico).*)']`.
-
-## Login rate limiting
-
-`lib/auth/login_guard.ts` — 10 attempts per IP per 15 minutes, returning 429 from
-`app/api/auth/login/route.ts`. With one shared password and no username, throttling
-guessing is the only thing standing between the dashboard and a brute-force.
-
-Client IP comes from `x-forwarded-for` (first entry), falling back to `x-real-ip`.
-That's trustworthy **only because Cloudflare sets it**; exposed directly, a client
-could spoof the header and reset its own budget.
-
-Counters live in an in-process `Map`, so they reset on redeploy and don't span
-replicas. Fine for a single-container deployment — revisit if it ever scales out.
-
-## API request signing
-
-`lib/api/signing.ts` mints `X-Heliolytics-Token`:
-
-```
-ts    = unix seconds
-nonce = 16 random bytes hex
-sig   = HMAC-SHA256(HELIOLYTICS_SIGNING_SECRET, "ts:nonce")
-token = "ts.nonce.sig"
+```text
+scrypt$N=32768$r=8$p=3$<16-byte-salt-hex>$<32-byte-hash-hex>
 ```
 
-**Must stay byte-identical to Go `auth.SignToken` and the Flutter
-`mintHeliolyticsToken`.** Three implementations, one format.
+Generate it locally. The CLI reads the password twice without echoing and writes
+only the encoded hash to standard output:
 
-Throws if `HELIOLYTICS_SIGNING_SECRET` is unset — fails closed, loudly, rather than
-sending unsigned requests.
-
-## API client
-
-`lib/api/client.ts` — 16 lines:
-
-```ts
-const res = await fetch(`${baseUrl()}${path}`, {
-  headers: { 'X-Heliolytics-Token': mintHeliolyticsToken() },
-  cache: 'no-store',
-});
+```bash
+npm run auth:hash-password
 ```
 
-- `baseUrl()` = `API_INTERNAL_URL` (in Docker: `http://api:8080`), else localhost
-- `cache: 'no-store'` — health data must never be served stale from the fetch cache
-- Maps 429 → "Rate limit exceeded", 401 → "Unauthorized"
+Malformed hashes and passwords above 256 UTF-8 bytes are rejected. Passwords are
+not trimmed or normalized. Login rate limiting runs before scrypt verification.
 
-`apiGet` is **server-only**. Calling it from a client component would ship the
-signing secret to the browser. Fetch in `page.tsx` and pass data down.
+## Browser session
 
-## Key files
+The cookie is `HttpOnly`, `SameSite=Lax`, `Path=/`, and `Secure` on HTTPS. Its
+value is:
 
-| File | Role |
-|---|---|
-| `middleware.ts` | Route gate |
-| `lib/auth/session.ts` | Cookie sign/verify |
-| `lib/auth/login_guard.ts` | Open-redirect guard |
-| `lib/auth/cookie_options.ts` | Cookie flags |
-| `app/api/auth/login/route.ts` | Set cookie |
-| `app/api/auth/logout/route.ts` | Clear cookie |
-| `lib/api/signing.ts` | Token minting |
-| `lib/api/client.ts` | Fetch wrapper |
-| `lib/api/endpoints.ts` | Path constants |
-| `lib/api/types.ts` | Response types |
+```text
+v1.<issuedAt>.<expiresAt>.<hexSignature>
+```
+
+The signature is HMAC-SHA256 over `v1:<issuedAt>:<expiresAt>`. A valid session has
+a rolling 7-day idle expiry and a 30-day absolute limit. Middleware renews it only
+when less than 3 days remain and keeps the original `issuedAt`.
+
+The old password-signed cookie format is rejected. Missing login-hash or session
+configuration fails closed.
+
+## Route gate
+
+`middleware.ts` protects every route except `/api/auth`, `/_next`, `/demo`, and
+`/about`. `safeRedirectPath` prevents an external login redirect. The login route
+allows 10 attempts per IP per 15 minutes.
+
+## Go API signing
+
+Server-side requests carry `X-Heliolytics-Token`:
+
+```text
+ts.nonce.sig
+sig = HMAC-SHA256(HELIOLYTICS_SIGNING_SECRET, "ts:nonce")
+```
+
+This format must stay byte-identical to the Go and Flutter implementations.
+`lib/api/client.ts` is server-only and aborts a request after 15 seconds.
+
+## Rotation
+
+1. Generate a new password hash with `npm run auth:hash-password`.
+2. Generate a separate session secret with `openssl rand -hex 32`.
+3. Update protected deployment configuration.
+4. Deploy Web and log in again.
+5. Remove the old plaintext `HELIOLYTICS_WEB_PASSWORD` variable.
+
+Changing the session secret logs out every browser. Changing the API signing
+secret must be coordinated with Go and every App installation that uses it.
