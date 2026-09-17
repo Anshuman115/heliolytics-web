@@ -1,145 +1,57 @@
 # Heliolytics Web
 
-**Next.js dashboard for a self-hosted wearable-health platform.** It visualizes the
-metrics synced from a fitness band — steps, vitals, sleep stages, recovery, and workouts —
-reading from the Heliolytics Go API over a server-signed, HMAC-authenticated channel.
+Private browser dashboard for Heliolytics. The Next.js server fetches data from
+Go; the browser displays overview, sleep, activity and vitals views.
 
-> **This repository is the web dashboard.** It pairs with a Flutter BLE client and a Go
-> ingestion/analytics backend — see [System architecture](#system-architecture).
+Source review: 7 September 2026. Describes the local code, not an installed-app or deployment check.
 
----
+## How it works
 
-## Engineering highlights
+1. Sign in with the owner's password.
+2. Middleware verifies the signed browser-session cookie.
+3. `app/page.tsx` starts eight server-side Go API reads.
+4. `DashboardApp` receives the data and manages tabs, day selection and 7/30-day ranges.
+5. Recharts displays the selected data. Tab changes do not make new API calls.
 
-- **Secret-safe API access** — every backend call is **HMAC-signed in a server component /
-  route handler**; the signing secret never reaches the browser. The client only ever sees
-  rendered data.
-- **Auth at the edge** — `middleware.ts` gates every route. Passwords use scrypt and
-  browser sessions use a separate HMAC secret with rolling expiry.
-- **App Router, server-first** — data is fetched in React Server Components, so the
-  dashboard ships minimal client JS and never exposes API internals.
-- **Typed data layer** — a small typed Go-API client (`lib/api`) mirrors the backend's
-  metrics contract; charts are one focused Recharts component per visualization.
+The API signing secret stays server-side. The browser gets metric data, not that
+secret. The open page is a snapshot; it has no polling or live push connection.
 
----
+## What exists
 
-## System architecture
+- Daily rings, fixed-rule daily insight and movement charts.
+- Selected-night sleep stages and historical sleep chart.
+- Workout/automatic-session lists, HR, vitals and temperature charts.
+- Sync status, password login/logout, public About and synthetic `/demo`.
 
-| Repo | Role | Stack |
-|------|------|-------|
-| **Heliolytics_Web** (this repo) | Web dashboard | Next.js · TypeScript · Tailwind · Recharts |
-| **Heliolytics** | Ingest, parse, store, metrics API | Go · PostgreSQL + TimescaleDB |
-| **Heliolytics_App** | BLE sync + health UI | Flutter · Dart |
+There is no AI integration, profile editor, journal or workout-detail route here.
+Some backend endpoints exist without a Web consumer.
 
-```
-Go API  ──HMAC (server-side)──►  Next.js (server components)  ──►  browser (rendered charts)
-```
+## Stack and configuration
 
----
+Next.js 14, React 18, TypeScript, Tailwind and Recharts are declared in `package.json`.
 
-## Features
+| Variable | Purpose |
+|---|---|
+| `HELIOLYTICS_WEB_PASSWORD_HASH` | Owner's scrypt password verifier |
+| `HELIOLYTICS_SESSION_SECRET` | Independent 32-byte hex session secret |
+| `HELIOLYTICS_SIGNING_SECRET` | API key shared with Go |
+| `API_INTERNAL_URL` | Go base URL, `http://api:8080` inside Compose |
+| `COOKIE_SECURE` | Optional cookie secure override |
 
-- **Daily metrics** — steps, HRV, SpO₂, stress, PAI, resting HR, respiratory rate, recovery score
-- **Sleep** — deep / REM / light breakdown with a per-night stage bar
-- **Workouts & activity sessions** — sport, duration, calories, avg HR
-- **Time-series charts** — vitals, temperature, sleep stages, step trends (Recharts)
+Generate a password verifier with `npm run auth:hash-password`.
+Keep all credentials in protected configuration.
 
----
+## Run and deploy
 
-## Tech stack
+With dependencies and environment configured, `npm run dev` starts development.
+`npm run test`, `npm run typecheck` and `npm run build` are verification commands;
+they were not run during this documentation update.
 
-Next.js 14 (App Router, Server Components) · TypeScript · Tailwind CSS · Recharts ·
-HMAC-SHA256 request signing · Docker
+The checked-in deployment uses the sibling backend's Compose stack.
+`./deploy.sh` delegates to its Web-only deployment script. It rebuilds Web;
+`PULL=1 ./deploy.sh` also pulls its source first. This is a source build workflow,
+not an implemented immutable-image CI pipeline.
 
----
-
-## Environment variables
-
-| Variable | Description |
-|----------|-------------|
-| `HELIOLYTICS_WEB_PASSWORD_HASH` | Scrypt dashboard password verifier |
-| `HELIOLYTICS_SESSION_SECRET` | Independent browser-session HMAC secret |
-| `HELIOLYTICS_SIGNING_SECRET` | HMAC secret shared with the Go API |
-| `API_INTERNAL_URL` | Go API base URL (default `http://localhost:8080`) |
-| `COOKIE_SECURE` | `true` in production to enforce HTTPS-only cookies |
-
-Set these in the deployment environment (Vercel / Docker) — never commit them.
-
----
-
-## Dev setup
-
-```bash
-export HELIOLYTICS_SIGNING_SECRET=your-api-secret
-export HELIOLYTICS_WEB_PASSWORD_HASH='paste npm run auth:hash-password output'
-export HELIOLYTICS_SESSION_SECRET='paste openssl rand -hex 32 output'
-export API_INTERNAL_URL=http://localhost:8080
-
-npm install
-npm run auth:hash-password
-npm run dev          # http://localhost:3000
-```
-
----
-
-## Project structure
-
-```
-app/
-  page.tsx            The dashboard — a server component that fetches every metric
-  login/ demo/ about/ Public routes (demo renders synthetic data)
-  api/auth/           Login + logout route handlers
-components/
-  dashboard/          DashboardApp (client shell) + one file per view
-  charts/             One Recharts component per visualization
-  ui/                 Shared primitives (Chip, Stat, StageBar…)
-lib/
-  api/                Typed Go-API client + endpoints (HMAC-signed)
-  auth/               Session management, login guard, cookie options
-  demo/               Synthetic data generator for /demo
-middleware.ts         Edge auth gate → redirects unauthenticated requests to /login
-```
-
----
-
-## Deployment
-
-Self-hosted via Docker. The dashboard runs as the `web` service in the Docker +
-Cloudflare Tunnel stack that lives in the sibling **Heliolytics** repo's `deploy/`
-folder — TLS terminates at the edge, and no ports are open on the VPS.
-
-To redeploy just this dashboard (rebuild + restart only the `web` container; db/api stay up):
-
-```bash
-./deploy.sh           # build from the current checkout
-PULL=1 ./deploy.sh    # git pull first, then rebuild
-```
-
-Requires the sibling `Heliolytics` checkout — `deploy.sh` delegates to its
-`deploy/deploy-web.sh`.
-
----
-
-## Documentation
-
-Engineering rules live in [CLAUDE.md](CLAUDE.md). One guide per feature:
-
-| Guide | Covers |
-|-------|--------|
-| [Dashboard](docs/features/dashboard.md) | Server-fetch → client shell, views, charts, routes |
-| [Auth](docs/features/auth.md) | Password session cookie, middleware gate, API request signing |
-
----
-
-## Development notes
-
-This project is built intensively with [Claude Code](https://claude.com/claude-code)
-as an engineering assistant — architecture and security decisions are reviewed and
-directed by hand, and the AI-assisted commits are attributed as such in the history.
-The rules the assistant works under are the same ones in [CLAUDE.md](CLAUDE.md).
-
----
-
-## License
-
+Read [dashboard](docs/features/dashboard.md), [authentication](docs/features/auth.md)
+and [engineering rules](CLAUDE.md).
 [Apache License 2.0](LICENSE).

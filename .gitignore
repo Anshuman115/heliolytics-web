@@ -23,7 +23,11 @@ Thumbs.db
 .claude/
 .github/
 
-# Docs: feature docs are published; anything else under docs/ stays local.
+# Documentation: only feature docs are published.
 docs/*
 !docs/features/
+!docs/features/**
 
+
+# Local reference documentation
+docs/local/

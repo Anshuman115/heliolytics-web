@@ -14,6 +14,12 @@ and no OAuth provider.
 Never reuse one value for another purpose. None of these values may reach a
 browser bundle.
 
+## Runtime split
+
+The login handler uses the Node runtime for scrypt in `lib/auth/password.ts`.
+Middleware verifies sessions with Web Crypto through `lib/auth/session.ts`.
+The whole authentication system does not run in a single runtime.
+
 ## Password verification
 
 `lib/auth/password.ts` accepts only this format:
