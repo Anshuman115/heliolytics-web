@@ -3,8 +3,6 @@
 Private browser dashboard for Heliolytics. The Next.js server fetches data from
 Go; the browser displays overview, sleep, activity and vitals views.
 
-Source review: 7 September 2026. Describes the local code, not an installed-app or deployment check.
-
 ## How it works
 
 1. Sign in with the owner's password.
@@ -44,14 +42,13 @@ Keep all credentials in protected configuration.
 ## Run and deploy
 
 With dependencies and environment configured, `npm run dev` starts development.
-`npm run test`, `npm run typecheck` and `npm run build` are verification commands;
-they were not run during this documentation update.
+Verification commands: `npm run test`, `npm run typecheck`, `npm run build`. None
+were run for this revision.
 
 The checked-in deployment uses the sibling backend's Compose stack.
 `./deploy.sh` delegates to its Web-only deployment script. It rebuilds Web;
 `PULL=1 ./deploy.sh` also pulls its source first. This is a source build workflow,
 not an implemented immutable-image CI pipeline.
 
-Read [dashboard](docs/features/dashboard.md), [authentication](docs/features/auth.md)
-and [engineering rules](CLAUDE.md).
+Read [dashboard](docs/features/dashboard.md) and [authentication](docs/features/auth.md).
 [Apache License 2.0](LICENSE).

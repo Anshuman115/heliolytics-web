@@ -1,7 +1,5 @@
 # Dashboard
 
-Source review: 7 September 2026. Describes the local code, not an installed-app or deployment check.
-
 ## One server fetch, then browser interaction
 
 ```text
