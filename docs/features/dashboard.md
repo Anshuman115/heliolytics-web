@@ -50,11 +50,11 @@ already open browser page. There is no background polling or live stream.
 and `/about` is public. `/api/auth/login` and `/api/auth/logout` handle sessions.
 The app also has loading, error and not-found components.
 
-## Changes belong here
+## Implementation locations
 
-- New chart: `components/charts`, using Recharts and the existing typed data.
-- New data source: backend contract, then `lib/api` and server page loading.
-- New interaction: `DashboardApp` or a focused view component.
-- New login behavior: `lib/auth`, route handlers and middleware.
+- Charts use `components/charts`, Recharts and the existing typed data.
+- Data sources use the backend contract, then `lib/api` and server page loading.
+- Interactions use `DashboardApp` or a focused view component.
+- Login behavior uses `lib/auth`, route handlers and middleware.
 
 See [authentication](auth.md) for runtime and secret boundaries.

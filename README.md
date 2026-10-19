@@ -42,10 +42,10 @@ Keep all credentials in protected configuration.
 ## Run and deploy
 
 With dependencies and environment configured, `npm run dev` starts development.
-Verification commands: `npm run test`, `npm run typecheck`, `npm run build`. None
-were run for this revision.
+Verification commands: `npm run test`, `npm run typecheck`, `npm run build`.
+Validation: not run for this revision.
 
-The checked-in deployment uses the sibling backend's Compose stack.
+The repository includes a deployment script for the sibling backend's Compose stack.
 `./deploy.sh` delegates to its Web-only deployment script. It rebuilds Web;
 `PULL=1 ./deploy.sh` also pulls its source first. This is a source build workflow,
 not an implemented immutable-image CI pipeline.

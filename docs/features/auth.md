@@ -72,7 +72,9 @@ sig = HMAC-SHA256(HELIOLYTICS_SIGNING_SECRET, "ts:nonce")
 This format must stay byte-identical to the Go and Flutter implementations.
 `lib/api/client.ts` is server-only and aborts a request after 15 seconds.
 
-## Rotation
+## Secret rotation
+
+To rotate the credentials:
 
 1. Generate a new password hash with `npm run auth:hash-password`.
 2. Generate a separate session secret with `openssl rand -hex 32`.
