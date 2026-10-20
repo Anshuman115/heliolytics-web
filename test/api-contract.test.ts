@@ -15,7 +15,7 @@ import { istRange } from '../lib/dates';
 const RANGE = istRange(30, new Date('2026-10-19T00:00:00Z'));
 
 beforeEach(() => {
-  vi.stubEnv('HELIOLYTICS_API_KEY', `web.${'ef'.repeat(32)}`);
+  vi.stubEnv('HELIOLYTICS_WEB_API_KEY', `web.${'ef'.repeat(32)}`);
   vi.stubEnv('API_INTERNAL_URL', 'http://127.0.0.1:8080');
 });
 

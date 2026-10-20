@@ -9,11 +9,12 @@ no OAuth provider.
 |---|---|---|
 | `HELIOLYTICS_WEB_PASSWORD_HASH` | Verify the human password | Nobody |
 | `HELIOLYTICS_SESSION_SECRET` | Sign browser sessions | Nobody |
-| `HELIOLYTICS_API_KEY` | Sign Web-to-Go reads | Go API, as the `web` key |
+| `HELIOLYTICS_WEB_API_KEY` | Sign Web-to-Go reads | Go API, as the `web` key |
 
 Never reuse one value for another purpose. None of these values may reach a
-browser bundle. The web holds only its own `web.<hex>` key: it never receives the
-phone key or the full API key ring, and the API never receives the session secret.
+browser bundle. The web holds only its own `web.<hex>` key in
+`HELIOLYTICS_WEB_API_KEY`: it never receives `HELIOLYTICS_PHONE_API_KEY`, and the
+API never receives the session secret.
 
 ## Startup validation
 
@@ -27,7 +28,7 @@ startup validation cannot drift apart.
 server listens and rejects a missing field, a plaintext or differently
 parameterised verifier, a session secret that is not 64 lowercase hex, anything
 other than one `web.<hex>` key, the published example secret, a session secret
-equal to the API key, an unusable `API_INTERNAL_URL` (including credentials, a query,
+equal to the web API key, an unusable `API_INTERNAL_URL` (including credentials, a query,
 fragment or path prefix), and a malformed boolean.
 Failures print a field name and a rule only, never a value.
 
@@ -117,9 +118,10 @@ is read.
 
 1. Generate a new password hash with `npm run auth:hash-password`.
 2. Generate a separate session secret with `openssl rand -hex 32`.
-3. Generate a fresh `web` key and register it in `HELIOLYTICS_API_KEYS` for Go.
+3. Generate a fresh `web` key and set it as `HELIOLYTICS_WEB_API_KEY` for both Go
+   and this web instance.
 4. Update protected deployment configuration and restart the web container.
-5. Confirm the session secret differs from every API key without printing either.
+5. Confirm the session secret differs from the web API key without printing either.
 
 Changing the session secret logs out every browser. Changing the web API key must
 be coordinated with Go. Cloudflare HTTPS redirect, HSTS at the edge and any VPS

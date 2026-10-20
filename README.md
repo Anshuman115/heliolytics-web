@@ -73,7 +73,7 @@ Client Components.
 |---|---|
 | `HELIOLYTICS_WEB_PASSWORD_HASH` | Owner's scrypt password verifier |
 | `HELIOLYTICS_SESSION_SECRET` | Independent 64 lowercase hex session secret |
-| `HELIOLYTICS_API_KEY` | This instance's own key, `web.<64 lowercase hex>` |
+| `HELIOLYTICS_WEB_API_KEY` | This instance's own key, `web.<64 lowercase hex>` |
 | `API_INTERNAL_URL` | Go base URL, `http://api:8080` inside Compose |
 | `TRUST_PROXY` | `true` only with the isolated cloudflared ingress |
 | `COOKIE_SECURE` | Explicit boolean; must be `true` in production |
@@ -81,8 +81,11 @@ Client Components.
 `scripts/validate-runtime.mjs` runs as a Node preload for `npm run dev`,
 `npm run start` and the image command. It validates the fields above before the
 server listens, rejects malformed values, the published example secret and a
-session secret equal to the API key, and prints a field name and rule only.
+session secret equal to the web API key, and prints a field name and rule only.
 `npm run build` never runs the preload and needs no secret.
+
+`HELIOLYTICS_WEB_API_KEY` holds one `web.<hex>` key. The web reads no other API
+key variable and needs no phone key to serve reads.
 
 Production requires `TRUST_PROXY=true` and `COOKIE_SECURE=true`. Login trusts one
 syntactically valid `CF-Connecting-IP` only because the web port is reachable

@@ -89,12 +89,12 @@ export function sign(input: SignInput): SignResult {
 }
 
 function readWebKey(): ApiKey {
-  const raw = process.env.HELIOLYTICS_API_KEY;
-  if (!raw) throw new Error('Invalid HELIOLYTICS_API_KEY: missing');
+  const raw = process.env.HELIOLYTICS_WEB_API_KEY;
+  if (!raw) throw new Error('Invalid HELIOLYTICS_WEB_API_KEY: missing');
   const parsed = parseApiKey(raw);
-  if (!parsed) throw new Error('Invalid HELIOLYTICS_API_KEY: expected web.<64 lowercase hex>');
+  if (!parsed) throw new Error('Invalid HELIOLYTICS_WEB_API_KEY: expected web.<64 lowercase hex>');
   if (parsed.kid !== WEB_KEY_KID) {
-    throw new Error('Invalid HELIOLYTICS_API_KEY: kid must be web');
+    throw new Error('Invalid HELIOLYTICS_WEB_API_KEY: kid must be web');
   }
   return { kid: parsed.kid, secretHex: parsed.secretHex };
 }
