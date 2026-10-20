@@ -27,7 +27,8 @@ startup validation cannot drift apart.
 server listens and rejects a missing field, a plaintext or differently
 parameterised verifier, a session secret that is not 64 lowercase hex, anything
 other than one `web.<hex>` key, the published example secret, a session secret
-equal to the API key, an unusable `API_INTERNAL_URL`, and a malformed boolean.
+equal to the API key, an unusable `API_INTERNAL_URL` (including credentials, a query,
+fragment or path prefix), and a malformed boolean.
 Failures print a field name and a rule only, never a value.
 
 Production mode (`NODE_ENV=production`) requires `TRUST_PROXY=true` and

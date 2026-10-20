@@ -50,8 +50,8 @@ charts never interpolate or join them.
   and on-wrist skin temperature samples.
 
 `SyncStatusBar` shows coverage facts: whether data exists, the last ingest time,
-the latest data watermark and the stream count. It does not claim the data is
-current and does not refresh itself.
+the latest data watermark and the count of streams with a non-null watermark. It
+does not claim the data is current and does not refresh itself.
 
 ## Naming and missing data
 

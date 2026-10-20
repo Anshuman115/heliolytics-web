@@ -1,11 +1,13 @@
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { SyncStatusBar } from '../components/SyncStatusBar';
 import { ActivityView } from '../components/dashboard/ActivityView';
 import { OverviewView } from '../components/dashboard/OverviewView';
 import { SleepView } from '../components/dashboard/SleepView';
 import { VitalsView } from '../components/dashboard/VitalsView';
 import type {
+  Coverage,
   Activity,
   DayMetric,
   ReadinessComponent,
@@ -568,5 +570,58 @@ describe('units and missing values', () => {
     expect(text).toContain('Total steps (partial)');
     expect(text).toContain('No step data');
     expect(text).not.toContain('NaN');
+  });
+});
+
+const EMPTY_COVERAGE_TYPES: Coverage['types'] = {
+  '0x01': null,
+  '0x05': null,
+  '0x06': null,
+  '0x0D': null,
+  '0x13': null,
+  '0x25': null,
+  '0x2E': null,
+  '0x38': null,
+  '0x46': null,
+  '0x48': null,
+  '0x49': null,
+};
+
+describe('sync status coverage', () => {
+  it('keeps the waiting state and missing-value labels when no streams have data', () => {
+    const text = renderText(
+      <SyncStatusBar
+        coverage={{
+          hasData: false,
+          lastIngestAt: null,
+          dataThrough: null,
+          types: EMPTY_COVERAGE_TYPES,
+        }}
+      />,
+    );
+
+    expect(text).toContain('Waiting for strap data');
+    expect(text).toContain('Last ingest never');
+    expect(text).not.toContain('data streams');
+    expect(text).not.toContain('Data through');
+  });
+
+  it('counts only coverage types with a non-null watermark', () => {
+    const text = renderText(
+      <SyncStatusBar
+        coverage={{
+          hasData: true,
+          lastIngestAt: '2026-10-19T00:00:00Z',
+          dataThrough: '2026-10-19T00:00:00Z',
+          types: {
+            ...EMPTY_COVERAGE_TYPES,
+            '0x01': '2026-10-18T00:00:00Z',
+          },
+        }}
+      />,
+    );
+
+    expect(text).toContain('Data available');
+    expect(text).toMatch(/(?:^|\s)1 data streams(?:\s|$)/);
   });
 });

@@ -103,6 +103,19 @@ describe('runtime configuration', () => {
     expect(failure({ ...validEnv, API_INTERNAL_URL: 'http://api:8080?x=1' })).toMatch(/API_INTERNAL_URL/);
   });
 
+  it('accepts only a root API origin without a path prefix', () => {
+    const rootConfig = validateRuntimeConfig({
+      ...validEnv,
+      API_INTERNAL_URL: 'http://api:8080/',
+    });
+    expect(rootConfig.apiUrl).toBe('http://api:8080');
+
+    for (const path of ['/prefix', '/prefix/', '/%61pi']) {
+      expect(failure({ ...validEnv, API_INTERNAL_URL: `http://api:8080${path}` }))
+        .toMatch(/API_INTERNAL_URL/);
+    }
+  });
+
   it('never silently defaults a malformed boolean', () => {
     expect(failure({ ...validEnv, TRUST_PROXY: 'yes' })).toMatch(/Invalid TRUST_PROXY/);
     expect(failure({ ...validEnv, COOKIE_SECURE: '1' })).toMatch(/Invalid COOKIE_SECURE/);

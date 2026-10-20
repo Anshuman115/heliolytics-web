@@ -18,7 +18,7 @@ export function SyncStatusBar({
   }
   if (!coverage) return null;
 
-  const typeCount = Object.keys(coverage.types).length;
+  const typeCount = Object.values(coverage.types).filter((watermark) => watermark !== null).length;
 
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.06] px-4 py-3 text-sm">
