@@ -41,8 +41,8 @@ const EMPTY = { from: '2000-01-01', to: '2000-01-02' };
 
 // The web is read-only, so write paths are intentionally absent from the API
 // module and named here only to prove the server refuses them.
-const INGEST_PATH = '/api/v1/ingest';
-const PROFILE_PATH = '/api/v1/profile';
+const INGEST_PATH = '/api/ingest';
+const PROFILE_PATH = '/api/profile';
 
 function errorCode(json: unknown): string | null {
   if (typeof json !== 'object' || json === null || !('error' in json)) return null;

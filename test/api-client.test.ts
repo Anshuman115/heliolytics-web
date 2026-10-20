@@ -28,12 +28,12 @@ describe('signed transport', () => {
       return jsonResponse(200, { days: [] });
     };
 
-    const body = await apiGet('/api/v1/daily-metrics?from=2026-09-20&to=2026-10-19', { fetcher });
+    const body = await apiGet('/api/daily-metrics?from=2026-09-20&to=2026-10-19', { fetcher });
 
     expect(body).toEqual({ days: [] });
-    expect(seenUrl).toBe('http://127.0.0.1:8080/api/v1/daily-metrics?from=2026-09-20&to=2026-10-19');
+    expect(seenUrl).toBe('http://127.0.0.1:8080/api/daily-metrics?from=2026-09-20&to=2026-10-19');
     const headers = new Headers(seenInit?.headers);
-    expect(headers.get('X-Heliolytics-Auth')).toMatch(/^v2\.web\.\d+\.[0-9a-f]{32}\.[0-9a-f]{64}$/);
+    expect(headers.get('X-Heliolytics-Auth')).toMatch(/^web\.\d+\.[0-9a-f]{32}\.[0-9a-f]{64}$/);
     expect(headers.get('X-Heliolytics-Content-SHA256')).toBe(EMPTY_SHA256);
     expect(headers.get('X-Heliolytics-Token')).toBeNull();
     expect(headers.get('Content-Type')).toBeNull();
@@ -54,7 +54,7 @@ describe('signed transport', () => {
       );
     };
 
-    const error = await apiGet('/api/v1/sleep', { fetcher }).catch((caught: unknown) => caught);
+    const error = await apiGet('/api/sleep', { fetcher }).catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(ApiError);
     if (error instanceof ApiError) {
@@ -74,7 +74,7 @@ describe('signed transport', () => {
       return jsonResponse(401, { error: { code: 'unauthorized', message: 'Bad signature' } });
     };
 
-    const error = await apiGet('/api/v1/sleep', { fetcher }).catch((caught: unknown) => caught);
+    const error = await apiGet('/api/sleep', { fetcher }).catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(ApiError);
     if (error instanceof ApiError) {
@@ -91,7 +91,7 @@ describe('signed transport', () => {
     const raw = '<html><body>stack trace and secret material</body></html>';
     const fetcher: ApiFetcher = async () => new Response(raw, { status: 500 });
 
-    const error = await apiGet('/api/v1/sleep', { fetcher }).catch((caught: unknown) => caught);
+    const error = await apiGet('/api/sleep', { fetcher }).catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(ApiError);
     if (error instanceof ApiError) {

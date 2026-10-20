@@ -53,7 +53,7 @@ async function signSession(
     false,
     ['sign'],
   );
-  const payload = `v1:${issuedAt}:${expiresAt}`;
+  const payload = `${issuedAt}:${expiresAt}`;
   const signature = await crypto.subtle.sign(
     'HMAC',
     key,
@@ -68,7 +68,7 @@ async function encodeSession(
   secret: string,
 ): Promise<string | null> {
   const signature = await signSession(issuedAt, expiresAt, secret);
-  return signature ? `v1.${issuedAt}.${expiresAt}.${signature}` : null;
+  return signature ? `${issuedAt}.${expiresAt}.${signature}` : null;
 }
 
 export async function createSessionValue(
@@ -84,7 +84,7 @@ export async function verifySessionValue(
   now = Math.floor(Date.now() / 1000),
 ): Promise<SessionVerification> {
   if (!sessionSecretBytes(secret)) return { valid: false };
-  const match = /^v1\.(\d+)\.(\d+)\.([0-9a-f]{64})$/.exec(token);
+  const match = /^(\d+)\.(\d+)\.([0-9a-f]{64})$/.exec(token);
   if (!match) return { valid: false };
   const issuedAt = Number(match[1]);
   const expiresAt = Number(match[2]);

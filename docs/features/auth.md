@@ -59,10 +59,10 @@ The cookie is `HttpOnly`, `SameSite=Lax`, `Path=/` and `Secure` in production. I
 value is:
 
 ```text
-v1.<issuedAt>.<expiresAt>.<hexSignature>
+<issuedAt>.<expiresAt>.<hexSignature>
 ```
 
-The signature is HMAC-SHA256 over `v1:<issuedAt>:<expiresAt>`. A valid session has
+The signature is HMAC-SHA256 over `<issuedAt>:<expiresAt>`. A valid session has
 a rolling 7-day idle expiry and a 30-day absolute limit. Middleware renews it only
 when less than 3 days remain and keeps the original `issuedAt`.
 
@@ -97,10 +97,10 @@ provide global brute-force protection across replicas.
 ## Go API signing
 
 Server-side reads carry `X-Heliolytics-Auth` and `X-Heliolytics-Content-SHA256`.
-The auth value is `v2.<kid>.<ts>.<nonce>.<sig>`, where `sig` is HMAC-SHA256 over
-nine newline-joined lines: `v2`, kid, decimal seconds, 32 hex nonce, uppercase
-method, escaped path, raw query, body hash and the exact Content-Type. A GET signs
-the empty body hash and an empty final Content-Type field.
+The auth value is `<kid>.<ts>.<nonce>.<sig>`, where `sig` is HMAC-SHA256 over
+eight newline-joined lines: kid, decimal seconds, 32 hex nonce, uppercase method,
+escaped path, raw query, body hash and the exact Content-Type. A GET signs the
+empty body hash and an empty final Content-Type field.
 
 `lib/api/client.ts` builds the URL once, splits the same string for signing and
 fetching, and never reorders, decodes or re-encodes the query afterwards. It sets
@@ -109,7 +109,7 @@ fetching, and never reorders, decodes or re-encodes the query afterwards. It set
 bounded text only, never raw upstream bodies or key material.
 
 The web key is read-only by server policy. A correctly signed web write to
-`POST /api/v1/ingest` or `PUT /api/v1/profile` is refused with 403 before the body
+`POST /api/ingest` or `PUT /api/profile` is refused with 403 before the body
 is read.
 
 ## Owner rotation

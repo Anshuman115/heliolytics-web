@@ -2,7 +2,7 @@ import type { ComponentName, DayMetric } from '@/lib/api/types';
 import { formatNumber } from '@/lib/dashboard';
 
 const LIMITATION =
-  'Heliolytics readiness v1 is a research-informed product score. Its weights are versioned product choices, not a validated medical formula or a universal industry standard, and it is not a Zepp or WHOOP equivalent.';
+  'Heliolytics readiness is a research-informed product score. Its weights are product choices, not a validated medical formula or a universal industry standard, and it is not a Zepp or WHOOP equivalent.';
 
 const COMPONENT_DISPLAY: Record<ComponentName, { label: string; unit: string }> = {
   hrv: { label: 'HRV (RMSSD)', unit: 'ms' },
@@ -62,7 +62,7 @@ export function ReadinessDetails({ day }: { day?: DayMetric }) {
           <p className="eyebrow mb-1">Readiness detail</p>
           <h3 className="text-lg font-bold text-white">{statusText}</h3>
         </div>
-        <p className="text-xs text-slate-400">Algorithm v{components.version} · {components.baselineNights} baseline nights</p>
+        <p className="text-xs text-slate-400">{components.baselineNights} baseline nights</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

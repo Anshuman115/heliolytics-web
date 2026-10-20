@@ -8,7 +8,7 @@ export const WEB_KEY_KID = 'web';
 
 export type ApiKey = { kid: string; secretHex: string };
 
-export type CanonicalV2Fields = {
+export type CanonicalFields = {
   kid: string;
   ts: number;
   nonce: string;
@@ -19,12 +19,12 @@ export type CanonicalV2Fields = {
   contentType: string;
 };
 
-export type SignV2Input = Omit<CanonicalV2Fields, 'bodySha256'> & {
+export type SignInput = Omit<CanonicalFields, 'bodySha256'> & {
   secretHex: string;
   body: Uint8Array;
 };
 
-export type SignV2Result = {
+export type SignResult = {
   canonicalText: string;
   bodySha256: string;
   signature: string;
@@ -36,7 +36,7 @@ export type SignedHeaders = {
   contentSha256: string;
 };
 
-export type SignRequestV2Input = {
+export type SignRequestInput = {
   method: string;
   escapedPath: string;
   rawQuery: string;
@@ -48,12 +48,11 @@ export type SignRequestV2Input = {
 };
 
 /**
- * Nine canonical lines joined with newlines, Content-Type last. An empty
+ * Eight canonical lines joined with newlines, Content-Type last. An empty
  * Content-Type therefore leaves the final empty field after the last separator.
  */
-export function canonicalV2Text(fields: CanonicalV2Fields): string {
+export function canonicalText(fields: CanonicalFields): string {
   return [
-    'v2',
     fields.kid,
     String(fields.ts),
     fields.nonce,
@@ -66,9 +65,9 @@ export function canonicalV2Text(fields: CanonicalV2Fields): string {
 }
 
 /** Pure signer shared by the published vectors and by production requests. */
-export function signV2(input: SignV2Input): SignV2Result {
+export function sign(input: SignInput): SignResult {
   const bodySha256 = createHash('sha256').update(input.body).digest('hex');
-  const canonicalText = canonicalV2Text({
+  const text = canonicalText({
     kid: input.kid,
     ts: input.ts,
     nonce: input.nonce,
@@ -79,13 +78,13 @@ export function signV2(input: SignV2Input): SignV2Result {
     contentType: input.contentType,
   });
   const signature = createHmac('sha256', Buffer.from(input.secretHex, 'hex'))
-    .update(canonicalText)
+    .update(text)
     .digest('hex');
   return {
-    canonicalText,
+    canonicalText: text,
     bodySha256,
     signature,
-    authHeader: `v2.${input.kid}.${input.ts}.${input.nonce}.${signature}`,
+    authHeader: `${input.kid}.${input.ts}.${input.nonce}.${signature}`,
   };
 }
 
@@ -100,9 +99,9 @@ function readWebKey(): ApiKey {
   return { kid: parsed.kid, secretHex: parsed.secretHex };
 }
 
-export function signRequestV2(input: SignRequestV2Input): SignedHeaders {
+export function signRequest(input: SignRequestInput): SignedHeaders {
   const key = input.key ?? readWebKey();
-  const result = signV2({
+  const result = sign({
     kid: key.kid,
     secretHex: key.secretHex,
     ts: input.ts ?? Math.floor(Date.now() / 1000),

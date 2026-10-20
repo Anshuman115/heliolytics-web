@@ -1,9 +1,9 @@
 export const API_ENDPOINTS = {
-  days: '/api/v1/daily-metrics',
-  sleep: '/api/v1/sleep',
-  activities: '/api/v1/activities',
-  temperature: '/api/v1/metrics/temperature',
-  series: '/api/v1/metrics/series',
-  hr: '/api/v1/metrics/hr',
-  coverage: '/api/v1/metrics/coverage',
+  days: '/api/daily-metrics',
+  sleep: '/api/sleep',
+  activities: '/api/activities',
+  temperature: '/api/metrics/temperature',
+  series: '/api/metrics/series',
+  hr: '/api/metrics/hr',
+  coverage: '/api/metrics/coverage',
 } as const;

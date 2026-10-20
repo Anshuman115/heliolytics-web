@@ -335,7 +335,6 @@ describe('persisted readiness', () => {
     dev: null,
   };
   const components: ReadinessComponents = {
-    version: 1,
     status: 'calibrating',
     score: null,
     raw: null,
@@ -344,7 +343,7 @@ describe('persisted readiness', () => {
     flags: ['baseline_stale:hrv'],
   };
 
-  it('renders the stored score, status, version and components', () => {
+  it('renders the stored score, status and components', () => {
     const day = dayMetric({
       dayKey: '2026-10-18',
       readiness: 72,
@@ -359,7 +358,8 @@ describe('persisted readiness', () => {
 
     expect(text).toContain('Calibrating');
     expect(text).toContain('72');
-    expect(text).toContain('Algorithm v1 · 5 baseline nights');
+    expect(text).toContain('5 baseline nights');
+    expect(text).not.toMatch(/algorithm v/i);
     expect(text).toContain('HRV (RMSSD)');
     expect(text).toContain('48.2 ms');
     expect(text).toContain('Sub 61.5');

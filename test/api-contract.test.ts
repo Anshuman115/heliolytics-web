@@ -43,7 +43,7 @@ function routingFetcher(overrides: Record<string, unknown> = {}): {
     if (url.includes('/metrics/coverage')) {
       return jsonResponse({ hasData: false, lastIngestAt: null, dataThrough: null, types: {} });
     }
-    if (url.includes('/api/v1/activities')) return jsonResponse({ activities: [] });
+    if (url.includes('/api/activities')) return jsonResponse({ activities: [] });
     return jsonResponse({ days: [] });
   };
   return { fetcher, urls };
@@ -51,14 +51,14 @@ function routingFetcher(overrides: Record<string, unknown> = {}): {
 
 describe('wire contract', () => {
   it('reads sleep days from the days list', async () => {
-    const { fetcher, urls } = routingFetcher({ '/api/v1/sleep': { days: [] } });
+    const { fetcher, urls } = routingFetcher({ '/api/sleep': { days: [] } });
     await expect(fetchSleep(RANGE, { fetcher })).resolves.toEqual([]);
     expect(urls).toHaveLength(1);
-    expect(urls[0]).toContain(`/api/v1/sleep?from=${RANGE.from}&to=${RANGE.to}`);
+    expect(urls[0]).toContain(`/api/sleep?from=${RANGE.from}&to=${RANGE.to}`);
   });
 
   it('reads activities from the activities list', async () => {
-    const { fetcher } = routingFetcher({ '/api/v1/activities': { activities: [] } });
+    const { fetcher } = routingFetcher({ '/api/activities': { activities: [] } });
     await expect(fetchActivities(RANGE, { fetcher })).resolves.toEqual([]);
   });
 
@@ -88,7 +88,7 @@ describe('wire contract', () => {
       stages: [],
     };
     const { fetcher } = routingFetcher({
-      '/api/v1/sleep': { days: [{ dayKey: '2026-10-18', main, naps: [nap] }] },
+      '/api/sleep': { days: [{ dayKey: '2026-10-18', main, naps: [nap] }] },
     });
 
     const days = await fetchSleep(RANGE, { fetcher });
@@ -115,7 +115,7 @@ describe('wire contract', () => {
       hasDetail: true,
     };
     const { fetcher } = routingFetcher({
-      '/api/v1/activities': {
+      '/api/activities': {
         activities: [
           { ...shared, kind: 'workout' },
           { ...shared, kind: 'auto', sportName: 'Walk', calories: null, hasDetail: false },
@@ -133,7 +133,7 @@ describe('wire contract', () => {
 
   it('flattens compact temperature days with the day key intact', async () => {
     const { fetcher } = routingFetcher({
-      '/api/v1/metrics/temperature': {
+      '/api/metrics/temperature': {
         days: [
           {
             dayKey: '2026-10-18',
@@ -154,13 +154,13 @@ describe('wire contract', () => {
 
   it('rejects a malformed root or list instead of inventing an empty screen', async () => {
     await expect(
-      fetchSleep(RANGE, { fetcher: routingFetcher({ '/api/v1/sleep': [] }).fetcher }),
+      fetchSleep(RANGE, { fetcher: routingFetcher({ '/api/sleep': [] }).fetcher }),
     ).rejects.toBeInstanceOf(ContractError);
     await expect(
-      fetchDays(RANGE, { fetcher: routingFetcher({ '/api/v1/daily-metrics': { days: {} } }).fetcher }),
+      fetchDays(RANGE, { fetcher: routingFetcher({ '/api/daily-metrics': { days: {} } }).fetcher }),
     ).rejects.toBeInstanceOf(ContractError);
     await expect(
-      fetchActivities(RANGE, { fetcher: routingFetcher({ '/api/v1/activities': { rows: [] } }).fetcher }),
+      fetchActivities(RANGE, { fetcher: routingFetcher({ '/api/activities': { rows: [] } }).fetcher }),
     ).rejects.toBeInstanceOf(ContractError);
     await expect(
       fetchCoverage({ fetcher: routingFetcher({ '/metrics/coverage': { types: {} } }).fetcher }),
@@ -186,7 +186,7 @@ describe('wire contract', () => {
     for (const url of ranged) {
       expect(url).toContain(`from=${RANGE.from}&to=${RANGE.to}`);
     }
-    expect(urls.filter((url) => url.includes('/api/v1/activities'))).toHaveLength(1);
+    expect(urls.filter((url) => url.includes('/api/activities'))).toHaveLength(1);
     for (const deleted of [
       '/daily-health-scores',
       '/metrics/workouts',

@@ -16,13 +16,13 @@ erase sleep, and renders the available results with a partial warning.
 
 | Client function | Backend path | Collection |
 |---|---|---|
-| `fetchDays` | `/api/v1/daily-metrics` | `days` |
-| `fetchSleep` | `/api/v1/sleep` | `days` |
-| `fetchActivities` | `/api/v1/activities` | `activities` |
-| `fetchTemperature` | `/api/v1/metrics/temperature` | `days` |
-| `fetchSeries` | `/api/v1/metrics/series` | `days` |
-| `fetchHeartRate` | `/api/v1/metrics/hr` | `days` |
-| `fetchCoverage` | `/api/v1/metrics/coverage` | single object |
+| `fetchDays` | `/api/daily-metrics` | `days` |
+| `fetchSleep` | `/api/sleep` | `days` |
+| `fetchActivities` | `/api/activities` | `activities` |
+| `fetchTemperature` | `/api/metrics/temperature` | `days` |
+| `fetchSeries` | `/api/metrics/series` | `days` |
+| `fetchHeartRate` | `/api/metrics/hr` | `days` |
+| `fetchCoverage` | `/api/metrics/coverage` | single object |
 
 The six ranged calls receive the same `from`/`to` from one inclusive IST window of
 30 days ending today. Coverage takes no range.
@@ -60,8 +60,8 @@ current and does not refresh itself.
 - Automatic activities are heuristic sustained movement from step and heart-rate
   minutes. The Walk or Run label is the server label and is never reclassified in
   the browser.
-- Readiness is the stored score, band, status, version, baseline nights and all
-  seven components. The browser never recomputes a score, weight or baseline.
+- Readiness is the stored score, band, status, baseline nights and all seven
+  components. The browser never recomputes a score, weight or baseline.
 - Nightly skin temperature and its signed deviation are the stored temperature
   readings. PAI is shown in points, training load as TRIMP, and workout
   calories are never presented as total daily burn.

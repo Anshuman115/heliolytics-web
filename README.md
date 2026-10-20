@@ -18,10 +18,10 @@ open page is a snapshot with no polling.
 
 ## Requests
 
-Each request is signed with the v2 scheme in `lib/api/signing.ts`. The canonical
-text is nine newline-joined lines: `v2`, kid, timestamp, nonce, uppercase method,
-escaped path, raw query, body SHA-256 and the exact Content-Type. A GET signs an
-empty body and an empty Content-Type. Headers are `X-Heliolytics-Auth` and
+Each request is signed in `lib/api/signing.ts`. The canonical text is eight
+newline-joined lines: kid, timestamp, nonce, uppercase method, escaped path, raw
+query, body SHA-256 and the exact Content-Type. A GET signs an empty body and an
+empty Content-Type. Headers are `X-Heliolytics-Auth` and
 `X-Heliolytics-Content-SHA256`. The URL is built once and split for signing, so
 the signed path and query are the bytes that reach the socket.
 
@@ -29,13 +29,13 @@ Reads and their responses:
 
 | Function | Route | Collection |
 |---|---|---|
-| `fetchDays` | `/api/v1/daily-metrics` | `days` |
-| `fetchSleep` | `/api/v1/sleep` | `days` |
-| `fetchActivities` | `/api/v1/activities` | `activities` |
-| `fetchTemperature` | `/api/v1/metrics/temperature` | `days`, compact |
-| `fetchSeries` | `/api/v1/metrics/series` | `days`, compact |
-| `fetchHeartRate` | `/api/v1/metrics/hr` | `days`, compact |
-| `fetchCoverage` | `/api/v1/metrics/coverage` | one object |
+| `fetchDays` | `/api/daily-metrics` | `days` |
+| `fetchSleep` | `/api/sleep` | `days` |
+| `fetchActivities` | `/api/activities` | `activities` |
+| `fetchTemperature` | `/api/metrics/temperature` | `days`, compact |
+| `fetchSeries` | `/api/metrics/series` | `days`, compact |
+| `fetchHeartRate` | `/api/metrics/hr` | `days`, compact |
+| `fetchCoverage` | `/api/metrics/coverage` | one object |
 
 Compact days pair second offsets with values. Unequal lengths are a contract
 error for the whole response; unusable points are dropped without a partial
@@ -51,18 +51,17 @@ screen. The client does not retry a 401 or a 429 automatically.
 - Activities split by `kind` into recorded workouts and automatic movement. Both
   keep start, end, duration, calories, steps, min/average/max heart rate and the
   `hasDetail` indicator. Nothing is deduplicated in the browser.
-- Readiness is the persisted score, band, status, algorithm version, baseline
-  nights and all seven components. Calibrating, no-baseline and no-data states
-  are distinct and never show a guessed score.
+- Readiness is the persisted score, band, status, baseline nights and all seven
+  components. Calibrating, no-baseline and no-data states are distinct and never
+  show a guessed score.
 - Vitals use the stored names: nightly skin temperature, skin temperature
   deviation, PAI points, TRIMP training load and workout calories. SpO2 shows a
   sample count and stays missing until three valid samples exist.
 - A null value is `n/a` or an explicit missing note. A known zero stays zero.
 
-Heliolytics readiness v1 is a research-informed product score. Its weights are
-versioned product choices, not a validated medical formula, and it is not a Zepp
-or WHOOP equivalent. Automatic movement is a heuristic, not a decoded vendor
-sport.
+Heliolytics readiness is a research-informed product score. Its weights are
+product choices, not a validated medical formula, and it is not a Zepp or WHOOP
+equivalent. Automatic movement is a heuristic, not a decoded vendor sport.
 
 ## Stack and configuration
 

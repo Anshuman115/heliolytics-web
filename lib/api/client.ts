@@ -1,7 +1,7 @@
 import 'server-only';
 import { clearTimeout, setTimeout } from 'node:timers';
 import { ContractError } from './compact';
-import { AUTH_HEADER, CONTENT_SHA256_HEADER, signRequestV2 } from './signing';
+import { AUTH_HEADER, CONTENT_SHA256_HEADER, signRequest } from './signing';
 
 export const API_TIMEOUT_MS = 15_000;
 
@@ -106,7 +106,7 @@ export async function sendApiRequest(
   const base = (process.env.API_INTERNAL_URL ?? 'http://localhost:8080').replace(/\/+$/, '');
   const url = `${base}${path}`;
   const separator = path.indexOf('?');
-  const signed = signRequestV2({
+  const signed = signRequest({
     method,
     escapedPath: separator === -1 ? path : path.slice(0, separator),
     rawQuery: separator === -1 ? '' : path.slice(separator + 1),

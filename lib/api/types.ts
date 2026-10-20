@@ -1,5 +1,5 @@
 /**
- * Wire types for the Go API v1 (contract C3). Every field is required; a
+ * Wire types for the Go API (contract C3). Every field is required; a
  * missing measurement is `null`, never zero and never absent.
  */
 
@@ -39,7 +39,6 @@ export type ReadinessComponent = {
 };
 
 export type ReadinessComponents = {
-  version: 1;
   status: ReadinessStatus;
   score: number | null;
   raw: number | null;

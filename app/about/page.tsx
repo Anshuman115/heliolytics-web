@@ -12,7 +12,7 @@ const METRICS: [string, string][] = [
 
 const LIMITS: [string, string][] = [
   ['No invented values', 'A missing measurement stays missing. The dashboard shows n/a or an explicit insufficient-data note; it never fills a gap with zero or a stale day.'],
-  ['No medical claim', 'Readiness v1 is a research-informed product score. It is not a diagnosis, not medical advice and not a validated industry standard.'],
+  ['No medical claim', 'Readiness is a research-informed product score. It is not a diagnosis, not medical advice and not a validated industry standard.'],
   ['No vendor cloning', 'Automatic movement is a heuristic, not a decoded vendor sport. Values are not claimed to match any other platform.'],
 ];
 
