@@ -1,51 +1,34 @@
 import { scrypt as nodeScrypt, timingSafeEqual } from 'node:crypto';
+import {
+  PASSWORD_MAX_BYTES,
+  SCRYPT_KEY_LENGTH,
+  SCRYPT_MAX_MEMORY,
+  SCRYPT_N,
+  SCRYPT_P,
+  SCRYPT_R,
+  parsePasswordHash,
+} from './runtime_config.mjs';
 
-export const PASSWORD_MAX_BYTES = 256;
-export const SCRYPT_N = 32768;
-export const SCRYPT_R = 8;
-export const SCRYPT_P = 3;
-const SCRYPT_KEY_LENGTH = 32;
-const SCRYPT_MAX_MEMORY = 128 * 1024 * 1024;
-
-type ParsedPasswordHash = {
-  salt: Buffer;
-  hash: Buffer;
-};
+export { PASSWORD_MAX_BYTES, SCRYPT_N, SCRYPT_R, SCRYPT_P };
 
 function deriveKey(password: Buffer, salt: Buffer): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    nodeScrypt(
-      password,
-      salt,
-      SCRYPT_KEY_LENGTH,
-      {
-        N: SCRYPT_N,
-        r: SCRYPT_R,
-        p: SCRYPT_P,
-        maxmem: SCRYPT_MAX_MEMORY,
-      },
-      (error, key) => (error ? reject(error) : resolve(key)),
-    );
-  });
-}
-
-function parsePasswordHash(encoded: string): ParsedPasswordHash | null {
-  const parts = encoded.split('$');
-  if (
-    parts.length !== 6 ||
-    parts[0] !== 'scrypt' ||
-    parts[1] !== `N=${SCRYPT_N}` ||
-    parts[2] !== `r=${SCRYPT_R}` ||
-    parts[3] !== `p=${SCRYPT_P}` ||
-    !/^[0-9a-f]{32}$/.test(parts[4] ?? '') ||
-    !/^[0-9a-f]{64}$/.test(parts[5] ?? '')
-  ) {
-    return null;
-  }
-  return {
-    salt: Buffer.from(parts[4]!, 'hex'),
-    hash: Buffer.from(parts[5]!, 'hex'),
-  };
+  const { promise, resolve, reject } = Promise.withResolvers<Buffer>();
+  nodeScrypt(
+    password,
+    salt,
+    SCRYPT_KEY_LENGTH,
+    {
+      N: SCRYPT_N,
+      r: SCRYPT_R,
+      p: SCRYPT_P,
+      maxmem: SCRYPT_MAX_MEMORY,
+    },
+    (error, key) => {
+      if (error) reject(error);
+      else resolve(key);
+    },
+  );
+  return promise;
 }
 
 export async function verifyPassword(
@@ -57,8 +40,8 @@ export async function verifyPassword(
   const parsed = parsePasswordHash(encoded);
   if (!parsed) return false;
   try {
-    const derived = await deriveKey(passwordBytes, parsed.salt);
-    return timingSafeEqual(derived, parsed.hash);
+    const derived = await deriveKey(passwordBytes, Buffer.from(parsed.saltHex, 'hex'));
+    return timingSafeEqual(derived, Buffer.from(parsed.hashHex, 'hex'));
   } catch {
     return false;
   }

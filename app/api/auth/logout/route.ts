@@ -1,14 +1,8 @@
 import { cookies } from 'next/headers';
 import { SESSION_COOKIE } from '@/lib/auth/session';
-import { sessionCookieSecure } from '@/lib/auth/cookie_options';
+import { sessionCookieOptions } from '@/lib/auth/cookie_options';
 
-export async function POST(request: Request) {
-  cookies().set(SESSION_COOKIE, '', {
-    httpOnly: true,
-    secure: sessionCookieSecure(request),
-    sameSite: 'lax',
-    maxAge: 0,
-    path: '/',
-  });
+export async function POST() {
+  cookies().set(SESSION_COOKIE, '', sessionCookieOptions(0));
   return Response.json({ ok: true });
 }

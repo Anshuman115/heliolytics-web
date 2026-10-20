@@ -1,13 +1,9 @@
 export const API_ENDPOINTS = {
-  days: '/api/v1/daily-metrics',
-  sleep: '/api/v1/sleep',
-  workouts: '/api/v1/metrics/workouts',
-  activitySessions: '/api/v1/metrics/activity-sessions',
-  temperature: '/api/v1/metrics/temperature',
-  series: '/api/v1/metrics/series',
-  hr: '/api/v1/metrics/hr',
-  coverage: '/api/v1/metrics/coverage',
+  days: '/api/daily-metrics',
+  sleep: '/api/sleep',
+  activities: '/api/activities',
+  temperature: '/api/metrics/temperature',
+  series: '/api/metrics/series',
+  hr: '/api/metrics/hr',
+  coverage: '/api/metrics/coverage',
 } as const;
-
-export const METRICS_DAYS = 30;
-export const WORKOUT_DAYS = 90;

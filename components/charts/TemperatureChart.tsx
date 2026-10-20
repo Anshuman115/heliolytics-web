@@ -9,29 +9,32 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { TempSample } from '@/lib/api';
+import type { TemperatureSample } from '@/lib/api/types';
+import { formatIstInstant } from '@/lib/dates';
 
-type TemperatureChartProps = {
-  samples: TempSample[];
-};
-
-export function TemperatureChart({ samples }: TemperatureChartProps) {
-  const data = samples.map((s) => ({
-    time: s.sampledAt.slice(5, 16).replace('T', ' '),
-    celsius: s.celsius,
-  }));
+/** On-wrist skin temperature samples. Not a nightly average or core temperature. */
+export function TemperatureChart({ samples }: { samples: TemperatureSample[] }) {
+  const data = [...samples]
+    .sort((a, b) => a.sampledAt.localeCompare(b.sampledAt))
+    .map((sample) => ({
+      time: formatIstInstant(sample.sampledAt, 'time'),
+      celsius: sample.celsius,
+    }));
 
   if (!data.length) {
     return (
       <div className="card p-8 text-center text-sm text-slate-500">
-        No temperature samples
+        No on-wrist temperature samples
       </div>
     );
   }
 
   return (
-    <div className="card p-4">
-      <h3 className="mb-3 text-sm font-bold text-slate-200">Skin temperature</h3>
+    <div className="card overflow-x-hidden p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="text-sm font-bold text-slate-200">On-wrist skin temperature samples</h3>
+        <span className="text-xs text-slate-500">IST</span>
+      </div>
       <ResponsiveContainer width="100%" height={220}>
         <AreaChart data={data}>
           <defs>
@@ -47,7 +50,7 @@ export function TemperatureChart({ samples }: TemperatureChartProps) {
             interval="preserveStartEnd"
             minTickGap={24}
           />
-          <YAxis domain={['auto', 'auto']} tick={{ fill: '#94a3b8', fontSize: 11 }} unit="°C" width={48} />
+          <YAxis domain={['auto', 'auto']} tick={{ fill: '#94a3b8', fontSize: 11 }} unit=" °C" width={52} />
           <Tooltip
             contentStyle={{ background: '#141414', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10 }}
           />

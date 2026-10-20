@@ -1,29 +1,100 @@
-const MAX_ATTEMPTS = 10;
-const WINDOW_MS = 15 * 60 * 1000;
+import 'server-only';
+import { isIP } from 'node:net';
+import { setInterval } from 'node:timers';
 
-type Entry = { count: number; resetAt: number };
+export const LOGIN_MAX_ATTEMPTS = 10;
+export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+export const LOGIN_MAX_ENTRIES = 10_000;
 
-const byIp = new Map<string, Entry>();
+export type LoginDecision =
+  | { status: 'allowed' }
+  | { status: 'limited'; retryAfterSec: number }
+  | { status: 'invalid-client' };
 
-function clientIp(request: Request): string {
-  const xff = request.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0]?.trim() ?? 'unknown';
-  return request.headers.get('x-real-ip') ?? 'unknown';
-}
+export type LoginGuard = {
+  check(request: Request): LoginDecision;
+  size(): number;
+};
 
-export function loginRateLimited(request: Request): boolean {
-  const ip = clientIp(request);
-  const now = Date.now();
-  let entry = byIp.get(ip);
-  if (!entry || now >= entry.resetAt) {
-    entry = { count: 0, resetAt: now + WINDOW_MS };
-    byIp.set(ip, entry);
+type Bucket = { count: number; resetAt: number };
+
+const CLEANUP_INTERVAL_MS = 60_000;
+const CLEANUP_BATCH = 256;
+
+// Next reloads modules in development; keep exactly one cleanup timer per process.
+const timerRegistry = globalThis as typeof globalThis & {
+  heliolyticsLoginCleanup?: NodeJS.Timeout;
+};
+
+/**
+ * Bounded, expiring login limiter. Production trusts one syntactically valid
+ * CF-Connecting-IP because Next exposes no socket peer; local development uses
+ * one shared bucket and ignores every forwarded header.
+ */
+export function createLoginGuard(options: {
+  trustedProxy: boolean;
+  now?: () => number;
+}): LoginGuard {
+  const buckets = new Map<string, Bucket>();
+  const clock = options.now ?? Date.now;
+
+  function sweep(): void {
+    const at = clock();
+    let examined = 0;
+    buckets.forEach((bucket, key) => {
+      if (examined >= CLEANUP_BATCH) return;
+      examined += 1;
+      if (at >= bucket.resetAt) buckets.delete(key);
+    });
   }
-  entry.count += 1;
-  return entry.count > MAX_ATTEMPTS;
-}
 
-export function safeRedirectPath(from: string | null): string {
-  if (!from || !from.startsWith('/') || from.startsWith('//')) return '/';
-  return from;
+  if (timerRegistry.heliolyticsLoginCleanup === undefined) {
+    const timer = setInterval(sweep, CLEANUP_INTERVAL_MS);
+    timer.unref();
+    timerRegistry.heliolyticsLoginCleanup = timer;
+  }
+
+  function clientKey(request: Request): string | null {
+    if (!options.trustedProxy) return 'local';
+    const header = request.headers.get('cf-connecting-ip');
+    if (header === null) return null;
+    const value = header.trim();
+    if (value.length === 0 || value.includes(',')) return null;
+    return isIP(value) === 0 ? null : value;
+  }
+
+  return {
+    check(request) {
+      const key = clientKey(request);
+      if (key === null) return { status: 'invalid-client' };
+
+      const at = clock();
+      const existing = buckets.get(key);
+      const bucket: Bucket =
+        existing === undefined || at >= existing.resetAt
+          ? { count: 0, resetAt: at + LOGIN_WINDOW_MS }
+          : existing;
+      // Re-insert on every attempt so the oldest key is the least recently used.
+      buckets.delete(key);
+      buckets.set(key, bucket);
+      bucket.count += 1;
+      while (buckets.size > LOGIN_MAX_ENTRIES) {
+        const oldest = buckets.keys().next();
+        if (oldest.done === true) break;
+        buckets.delete(oldest.value);
+      }
+
+      if (bucket.count <= LOGIN_MAX_ATTEMPTS) return { status: 'allowed' };
+      return {
+        status: 'limited',
+        retryAfterSec: Math.min(
+          Math.ceil(LOGIN_WINDOW_MS / 1000),
+          Math.max(1, Math.ceil((bucket.resetAt - at) / 1000)),
+        ),
+      };
+    },
+    size() {
+      return buckets.size;
+    },
+  };
 }

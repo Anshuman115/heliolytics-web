@@ -11,9 +11,9 @@ const secret = '11'.repeat(32);
 const now = 1_800_000_000;
 
 describe('browser sessions', () => {
-  it('creates and verifies a v1 session', async () => {
+  it('creates and verifies a session', async () => {
     const token = await createSessionValue(secret, now);
-    expect(token).toMatch(/^v1\.\d+\.\d+\.[0-9a-f]{64}$/);
+    expect(token).toMatch(/^\d+\.\d+\.[0-9a-f]{64}$/);
     await expect(verifySessionValue(token!, secret, now + 1)).resolves.toMatchObject({
       valid: true,
       issuedAt: now,

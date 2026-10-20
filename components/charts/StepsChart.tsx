@@ -9,18 +9,16 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { DayMetric } from '@/lib/api';
+import type { DayMetric } from '@/lib/api/types';
+import { formatDayKey } from '@/lib/dates';
 
-type StepsChartProps = {
-  days: DayMetric[];
-};
-
-export function StepsChart({ days }: StepsChartProps) {
+/** Daily steps. A null day is a gap, and a known zero is drawn as zero. */
+export function StepsChart({ days }: { days: DayMetric[] }) {
   const data = [...days]
     .sort((a, b) => a.dayKey.localeCompare(b.dayKey))
-    .map((d) => ({ day: d.dayKey.slice(5), steps: d.steps }));
+    .map((day) => ({ day: formatDayKey(day.dayKey), steps: day.steps }));
 
-  if (!data.length) {
+  if (!data.some((row) => row.steps !== null)) {
     return <Empty label="No step data" />;
   }
 
@@ -36,12 +34,12 @@ export function StepsChart({ days }: StepsChartProps) {
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#ffffff12" vertical={false} />
           <XAxis dataKey="day" tick={{ fill: '#94a3b8', fontSize: 11 }} minTickGap={24} />
-          <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} width={36} />
+          <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} width={44} />
           <Tooltip
             cursor={{ fill: '#ffffff08' }}
             contentStyle={{ background: '#141414', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10 }}
           />
-          <Bar dataKey="steps" fill="url(#stepsFill)" radius={[6, 6, 0, 0]} />
+          <Bar dataKey="steps" fill="url(#stepsFill)" name="Steps" radius={[6, 6, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </ChartShell>
@@ -56,7 +54,7 @@ function ChartShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="card p-4">
+    <div className="card overflow-x-hidden p-4">
       <h3 className="mb-3 text-sm font-bold text-slate-200">{title}</h3>
       {children}
     </div>

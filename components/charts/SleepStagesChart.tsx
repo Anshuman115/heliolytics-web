@@ -10,26 +10,18 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { SleepMetric } from '@/lib/api';
+import type { DayMetric } from '@/lib/api/types';
+import { sleepStageRows } from '@/lib/dashboard';
+import { formatDayKey } from '@/lib/dates';
 
-type SleepStagesChartProps = {
-  sleep: SleepMetric[];
-};
-
-export function SleepStagesChart({ sleep }: SleepStagesChartProps) {
-  const byDay = new Map<string, SleepMetric>();
-  for (const s of sleep) {
-    const prev = byDay.get(s.dayKey);
-    if (!prev || s.score > prev.score) byDay.set(s.dayKey, s);
-  }
-  const data = Array.from(byDay.values())
-    .sort((a, b) => a.dayKey.localeCompare(b.dayKey))
-    .map((s) => ({
-      day: s.dayKey.slice(5),
-      deep: s.deepMins,
-      rem: s.remMins,
-      light: s.lightMins,
-    }));
+export function SleepStagesChart({ days }: { days: DayMetric[] }) {
+  const data = sleepStageRows(days).map((row) => ({
+    day: formatDayKey(row.dayKey),
+    deep: row.deep,
+    rem: row.rem,
+    light: row.light,
+    wake: row.wake,
+  }));
 
   if (!data.length) {
     return (
@@ -40,10 +32,10 @@ export function SleepStagesChart({ sleep }: SleepStagesChartProps) {
   }
 
   return (
-    <div className="card p-4">
+    <div className="card overflow-x-hidden p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="text-sm font-bold text-slate-200">Sleep stages</h3>
-        <span className="text-xs text-slate-500">By night</span>
+        <span className="text-xs text-slate-500">Daily rollup totals</span>
       </div>
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={data}>
@@ -57,7 +49,8 @@ export function SleepStagesChart({ sleep }: SleepStagesChartProps) {
           <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
           <Bar dataKey="deep" stackId="s" fill="#6366f1" name="Deep" />
           <Bar dataKey="rem" stackId="s" fill="#a78bfa" name="REM" />
-          <Bar dataKey="light" stackId="s" fill="#38bdf8" name="Light" radius={[6, 6, 0, 0]} />
+          <Bar dataKey="light" stackId="s" fill="#38bdf8" name="Light" />
+          <Bar dataKey="wake" stackId="s" fill="#94a3b8" name="Wake" radius={[6, 6, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

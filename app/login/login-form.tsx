@@ -2,12 +2,11 @@
 
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { safeRedirectPath } from '@/lib/auth/login_guard';
+import { useSearchParams } from 'next/navigation';
+import { safeRedirectPath } from '@/lib/auth/redirect';
 import { BrandMark } from '@/components/BrandMark';
 
 export default function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -24,12 +23,16 @@ export default function LoginForm() {
         body: JSON.stringify({ password }),
       });
       if (!response.ok) {
-        const data = (await response.json()) as { error?: string };
-        setError(data.error ?? 'Sign in failed');
+        const data: unknown = await response.json().catch(() => null);
+        const message =
+          typeof data === 'object' && data !== null && 'error' in data && typeof data.error === 'string'
+            ? data.error
+            : 'Sign in failed';
+        setError(message);
         return;
       }
-      router.replace(safeRedirectPath(params.get('from')));
-      router.refresh();
+      // One full navigation renders the dashboard once with the session cookie.
+      window.location.replace(safeRedirectPath(params.get('from')));
     } catch {
       setError('Could not reach the server');
     } finally {
@@ -40,7 +43,7 @@ export default function LoginForm() {
   return (
     <main className="min-h-screen px-4 py-5 sm:px-6 sm:py-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 lg:min-h-[calc(100vh-4rem)] lg:justify-center lg:gap-20">
-        <div className="flex items-center justify-between"><Link href="/about" aria-label="Heliolytics home"><BrandMark /></Link><Link href="/demo" className="text-sm font-semibold text-slate-400 hover:text-white">View demo →</Link></div>
+        <div className="flex items-center justify-between"><Link href="/about" aria-label="Heliolytics home"><BrandMark /></Link></div>
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_420px]">
           <section>
             <p className="eyebrow mb-4 text-emerald-200">Welcome back</p>
@@ -48,7 +51,7 @@ export default function LoginForm() {
             <p className="mt-6 max-w-lg text-base leading-7 text-slate-300">Open your private Heliolytics console to see the latest picture from your strap.</p>
             <div className="mt-8 grid max-w-lg gap-3 sm:grid-cols-3">
               <Benefit title="Private" copy="Your server, your data." />
-              <Benefit title="Clear" copy="Short, useful signals." />
+              <Benefit title="Clear" copy="Stored values, not guesses." />
               <Benefit title="Complete" copy="Sleep to activity." />
             </div>
           </section>
@@ -61,7 +64,7 @@ export default function LoginForm() {
               {error ? <p className="rounded-xl border border-rose-300/20 bg-rose-300/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
               <button type="submit" disabled={loading} className="button-primary w-full disabled:cursor-wait disabled:opacity-60">{loading ? 'Opening console…' : 'Open console'}</button>
             </form>
-            <p className="mt-6 border-t border-white/10 pt-5 text-center text-xs leading-5 text-slate-500">Just looking around? <Link href="/demo" className="font-semibold text-emerald-200 hover:text-white">Explore the sample workspace</Link></p>
+            <p className="mt-6 border-t border-white/10 pt-5 text-center text-xs leading-5 text-slate-500">This console holds your own band data and stays behind this password.</p>
           </section>
         </div>
       </div>
