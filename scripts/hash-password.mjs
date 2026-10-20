@@ -2,11 +2,17 @@
 
 import { randomBytes, scrypt as nodeScrypt } from 'node:crypto';
 import { promisify } from 'node:util';
+import {
+  PASSWORD_MAX_BYTES,
+  SCRYPT_KEY_LENGTH,
+  SCRYPT_MAX_MEMORY,
+  SCRYPT_N,
+  SCRYPT_P,
+  SCRYPT_R,
+  encodePasswordHash,
+} from '../lib/auth/runtime_config.mjs';
 
 const scrypt = promisify(nodeScrypt);
-const N = 32768;
-const r = 8;
-const p = 3;
 
 async function readHidden(prompt) {
   if (!process.stdin.isTTY) throw new Error('Run this command in an interactive terminal.');
@@ -42,22 +48,20 @@ async function readHidden(prompt) {
 
 try {
   const password = await readHidden('Password: ');
-  if (Buffer.byteLength(password, 'utf8') > 256) {
-    throw new Error('Password exceeds 256 UTF-8 bytes.');
+  if (Buffer.byteLength(password, 'utf8') > PASSWORD_MAX_BYTES) {
+    throw new Error(`Password exceeds ${PASSWORD_MAX_BYTES} UTF-8 bytes.`);
   }
   const confirmation = await readHidden('Confirm password: ');
   if (password !== confirmation) throw new Error('Passwords do not match.');
 
   const salt = randomBytes(16);
-  const hash = await scrypt(Buffer.from(password, 'utf8'), salt, 32, {
-    N,
-    r,
-    p,
-    maxmem: 128 * 1024 * 1024,
+  const hash = await scrypt(Buffer.from(password, 'utf8'), salt, SCRYPT_KEY_LENGTH, {
+    N: SCRYPT_N,
+    r: SCRYPT_R,
+    p: SCRYPT_P,
+    maxmem: SCRYPT_MAX_MEMORY,
   });
-  process.stdout.write(
-    `scrypt$N=${N}$r=${r}$p=${p}$${salt.toString('hex')}$${hash.toString('hex')}\n`,
-  );
+  process.stdout.write(`${encodePasswordHash(salt.toString('hex'), hash.toString('hex'))}\n`);
 } catch (error) {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
   process.exitCode = 1;

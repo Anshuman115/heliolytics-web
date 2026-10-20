@@ -7,6 +7,7 @@ import {
   SCRYPT_R,
   verifyPassword,
 } from '../lib/auth/password';
+import { parsePasswordHash } from '../lib/auth/runtime_config.mjs';
 
 function encode(password: string): string {
   const salt = randomBytes(16);
@@ -33,5 +34,21 @@ describe('password verification', () => {
   it('rejects passwords above the UTF-8 byte limit', async () => {
     const tooLong = 'é'.repeat(PASSWORD_MAX_BYTES / 2 + 1);
     await expect(verifyPassword(tooLong, encode('unused'))).resolves.toBe(false);
+  });
+
+  it('shares one verifier grammar with the runtime configuration module', () => {
+    const encoded = encode('shared password');
+    const parsed = parsePasswordHash(encoded);
+
+    expect(parsed).not.toBeNull();
+    expect(parsed?.saltHex).toHaveLength(32);
+    expect(parsed?.hashHex).toHaveLength(64);
+    expect(
+      parsePasswordHash(
+        `scrypt$N=${SCRYPT_N * 2}$r=${SCRYPT_R}$p=${SCRYPT_P}$${'aa'.repeat(16)}$${'bb'.repeat(32)}`,
+      ),
+    ).toBeNull();
+    expect(parsePasswordHash(`scrypt$N=${SCRYPT_N}$r=${SCRYPT_R}$p=${SCRYPT_P}$plaintext$${'bb'.repeat(32)}`))
+      .toBeNull();
   });
 });

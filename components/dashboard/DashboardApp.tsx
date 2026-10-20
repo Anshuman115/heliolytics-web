@@ -1,18 +1,24 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type {
-  ActivitySessionMetric,
+  Activity,
   DayMetric,
-  HealthSample,
   HeartRateSample,
-  SleepMetric,
-  TempSample,
-  WorkoutMetric,
-} from '@/lib/api';
+  SeriesSample,
+  SleepDay,
+  TemperatureSample,
+} from '@/lib/api/types';
 import { BrandMark } from '@/components/BrandMark';
 import { SignOutButton } from '@/components/SignOutButton';
+import {
+  collectDayKeys,
+  DASHBOARD_RANGES,
+  resolveSelection,
+  type DashboardRange,
+} from '@/lib/dashboard';
+import { formatDayKey, istDayKey } from '@/lib/dates';
 import { OverviewView } from './OverviewView';
 import { SleepView } from './SleepView';
 import { ActivityView } from './ActivityView';
@@ -20,19 +26,15 @@ import { VitalsView } from './VitalsView';
 
 export type DashboardData = {
   days: DayMetric[];
-  sleep: SleepMetric[];
-  workouts: WorkoutMetric[];
-  activitySessions: ActivitySessionMetric[];
-  temperature: TempSample[];
-  series: HealthSample[];
+  sleep: SleepDay[];
+  activities: Activity[];
+  temperature: TemperatureSample[];
+  series: SeriesSample[];
   heartRate: HeartRateSample[];
 };
 
-type DashboardAppProps = DashboardData & { demo?: boolean };
 const TABS = ['overview', 'sleep', 'activity', 'vitals'] as const;
 type Tab = (typeof TABS)[number];
-const RANGES = [7, 30] as const;
-type Range = (typeof RANGES)[number];
 
 const TAB_LABELS: Record<Tab, string> = {
   overview: 'Overview',
@@ -41,51 +43,41 @@ const TAB_LABELS: Record<Tab, string> = {
   vitals: 'Vitals',
 };
 
-function dayLabel(key: string) {
-  return new Date(`${key}T00:00:00Z`).toLocaleDateString('en-US', {
-    timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric',
-  });
-}
-
-export function DashboardApp({ demo = false, ...data }: DashboardAppProps) {
-  const sortedDays = useMemo(
-    () => [...data.days].sort((a, b) => a.dayKey.localeCompare(b.dayKey)),
-    [data.days],
-  );
-  const latest = sortedDays.at(-1)?.dayKey ?? '';
+export function DashboardApp({
+  days,
+  sleep,
+  activities,
+  temperature,
+  series,
+  heartRate,
+}: DashboardData) {
   const [tab, setTab] = useState<Tab>('overview');
-  const [range, setRange] = useState<Range>(30);
-  const [day, setDay] = useState<string>(latest);
+  const [range, setRange] = useState<DashboardRange>(30);
+  const [requestedDay, setRequestedDay] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    const base = latest ? new Date(`${latest}T00:00:00Z`) : new Date();
-    base.setUTCDate(base.getUTCDate() - (range - 1));
-    const cut = base.toISOString().slice(0, 10);
-    const inRange = (key: string) => key >= cut;
-    const days = sortedDays.filter((item) => inRange(item.dayKey));
-    return {
-      days,
-      sleep: data.sleep.filter((item) => inRange(item.dayKey)),
-      series: data.series.filter((item) => inRange(item.dayKey)),
-      temperature: data.temperature.filter((item) => inRange(item.dayKey)),
-      workouts: data.workouts.filter((item) => inRange(item.dayKey)),
-      sessions: data.activitySessions.filter((item) => inRange(item.dayKey)),
-      dayKeys: days.map((item) => item.dayKey).reverse(),
-    };
-  }, [data, sortedDays, latest, range]);
+  // Selectable days come from daily rows, sleep days and activities together, so
+  // a nap-only or activity-only date stays reachable.
+  const visibleKeys = collectDayKeys(days, sleep, activities).slice(-range);
+  const selectedKey = resolveSelection(visibleKeys, requestedDay);
+  const firstKey = visibleKeys.length > 0 ? visibleKeys[0] : '';
+  const inRange = (key: string) => key >= firstKey;
 
-  const currentDay = filtered.days.find((item) => item.dayKey === day) ?? filtered.days.at(-1);
-  const currentNight = filtered.sleep.find((item) => item.dayKey === currentDay?.dayKey);
-  const dayHr = data.heartRate.filter((item) => item.dayKey === currentDay?.dayKey);
+  const visibleDays = days.filter((item) => inRange(item.dayKey));
+  const visibleActivities = activities.filter((item) => inRange(item.dayKey));
+  const visibleSeries = series.filter((item) => inRange(item.dayKey));
+  const visibleTemperature = temperature.filter((item) => inRange(item.dayKey));
+
+  const day = days.find((item) => item.dayKey === selectedKey);
+  const sleepDay = sleep.find((item) => item.dayKey === selectedKey);
+  const dayHr = heartRate.filter((item) => item.dayKey === selectedKey);
+  const isToday = selectedKey !== null && selectedKey === istDayKey();
 
   return (
     <div className="fade-up">
-      {!demo ? (
-        <header className="mb-6 flex flex-col gap-5 border-b border-white/10 pb-5 lg:flex-row lg:items-center lg:justify-between">
-          <Link href="/" aria-label="Heliolytics dashboard" className="rounded-lg"><BrandMark /></Link>
-          <div className="flex items-center gap-2 lg:justify-end"><span className="hidden text-xs text-slate-500 sm:block">Private health console</span><SignOutButton /></div>
-        </header>
-      ) : null}
+      <header className="mb-6 flex flex-col gap-5 border-b border-white/10 pb-5 lg:flex-row lg:items-center lg:justify-between">
+        <Link href="/" aria-label="Heliolytics dashboard" className="rounded-lg"><BrandMark /></Link>
+        <div className="flex items-center gap-2 lg:justify-end"><span className="hidden text-xs text-slate-500 sm:block">Private health console</span><SignOutButton /></div>
+      </header>
 
       <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
@@ -102,9 +94,9 @@ export function DashboardApp({ demo = false, ...data }: DashboardAppProps) {
             ))}
           </div>
           <div className="flex gap-1 rounded-2xl border border-white/10 bg-black/10 p-1">
-            {RANGES.map((days) => (
-              <button key={days} type="button" onClick={() => setRange(days)} aria-pressed={range === days} className="surface-button border-transparent px-2.5 py-2 text-xs">
-                {days}d
+            {DASHBOARD_RANGES.map((count) => (
+              <button key={count} type="button" onClick={() => setRange(count)} aria-pressed={range === count} className="surface-button border-transparent px-2.5 py-2 text-xs">
+                {count}d
               </button>
             ))}
           </div>
@@ -113,20 +105,20 @@ export function DashboardApp({ demo = false, ...data }: DashboardAppProps) {
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
         <div className="flex items-center gap-2 text-sm text-slate-400"><span className="h-2 w-2 rounded-full bg-emerald-300" /> Showing <strong className="text-white">{range} days</strong> of your trends</div>
-        {filtered.dayKeys.length > 0 ? (
+        {visibleKeys.length > 0 ? (
           <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
             Day
-            <select value={currentDay?.dayKey ?? ''} onChange={(event) => setDay(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950/50 px-3 py-2 text-sm font-medium normal-case tracking-normal text-white outline-none focus:ring-2 focus:ring-emerald-300/60">
-              {filtered.dayKeys.map((key) => <option key={key} value={key}>{dayLabel(key)}</option>)}
+            <select value={selectedKey ?? ''} onChange={(event) => setRequestedDay(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950/50 px-3 py-2 text-sm font-medium normal-case tracking-normal text-white outline-none focus:ring-2 focus:ring-emerald-300/60">
+              {visibleKeys.map((key) => <option key={key} value={key}>{formatDayKey(key)}</option>)}
             </select>
           </label>
         ) : null}
       </div>
 
-      {tab === 'overview' ? <OverviewView days={filtered.days} currentDay={currentDay} series={filtered.series} /> : null}
-      {tab === 'sleep' ? <SleepView sleep={filtered.sleep} currentNight={currentNight} /> : null}
-      {tab === 'activity' ? <ActivityView days={filtered.days} workouts={filtered.workouts} sessions={filtered.sessions} /> : null}
-      {tab === 'vitals' ? <VitalsView dayHr={dayHr} series={filtered.series} temperature={filtered.temperature} currentDay={currentDay} /> : null}
+      {tab === 'overview' ? <OverviewView dayKey={selectedKey} day={day} days={visibleDays} series={visibleSeries} isToday={isToday} /> : null}
+      {tab === 'sleep' ? <SleepView dayKey={selectedKey} sleepDay={sleepDay} day={day} trend={visibleDays} /> : null}
+      {tab === 'activity' ? <ActivityView dayKey={selectedKey} days={visibleDays} activities={visibleActivities} /> : null}
+      {tab === 'vitals' ? <VitalsView dayKey={selectedKey} day={day} dayHr={dayHr} series={visibleSeries} temperature={visibleTemperature} /> : null}
     </div>
   );
 }

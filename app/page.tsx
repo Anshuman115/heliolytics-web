@@ -1,64 +1,66 @@
 import { DashboardApp } from '@/components/dashboard/DashboardApp';
 import { SyncStatusBar } from '@/components/SyncStatusBar';
 import {
-  fetchActivitySessions,
+  fetchActivities,
   fetchCoverage,
   fetchDays,
   fetchHeartRate,
   fetchSeries,
   fetchSleep,
   fetchTemperature,
-  fetchWorkouts,
 } from '@/lib/api';
 import type {
-  ActivitySessionMetric,
+  Activity,
+  Coverage,
   DayMetric,
-  HealthSample,
   HeartRateSample,
-  SleepMetric,
-  SyncCoverage,
-  TempSample,
-  WorkoutMetric,
+  SeriesSample,
+  SleepDay,
+  TemperatureSample,
 } from '@/lib/api/types';
+import { SNAPSHOT_DAYS } from '@/lib/dashboard';
+import { istRange } from '@/lib/dates';
 
 export const dynamic = 'force-dynamic';
 
+function describe(error: unknown): string {
+  return error instanceof Error ? error.message : 'request failed';
+}
+
 export default async function HomePage() {
+  // One IST snapshot window, shared by all six ranged reads.
+  const range = istRange(SNAPSHOT_DAYS);
   const errors: string[] = [];
   let days: DayMetric[] = [];
-  let sleep: SleepMetric[] = [];
-  let workouts: WorkoutMetric[] = [];
-  let activitySessions: ActivitySessionMetric[] = [];
-  let temperature: TempSample[] = [];
-  let series: HealthSample[] = [];
+  let sleep: SleepDay[] = [];
+  let activities: Activity[] = [];
+  let temperature: TemperatureSample[] = [];
+  let series: SeriesSample[] = [];
   let heartRate: HeartRateSample[] = [];
-  let coverage: SyncCoverage | null = null;
+  let coverage: Coverage | null = null;
   let coverageError: string | undefined;
 
   await Promise.all([
-    fetchDays().then((d) => { days = d; }).catch((e) => {
-      errors.push(`Days: ${e instanceof Error ? e.message : 'failed'}`);
+    fetchDays(range).then((data) => { days = data; }).catch((error) => {
+      errors.push(`Days: ${describe(error)}`);
     }),
-    fetchSleep().then((d) => { sleep = d; }).catch((e) => {
-      errors.push(`Sleep: ${e instanceof Error ? e.message : 'failed'}`);
+    fetchSleep(range).then((data) => { sleep = data; }).catch((error) => {
+      errors.push(`Sleep: ${describe(error)}`);
     }),
-    fetchWorkouts().then((d) => { workouts = d; }).catch((e) => {
-      errors.push(`Workouts: ${e instanceof Error ? e.message : 'failed'}`);
+    fetchActivities(range).then((data) => { activities = data; }).catch((error) => {
+      errors.push(`Activities: ${describe(error)}`);
     }),
-    fetchActivitySessions().then((d) => { activitySessions = d; }).catch((e) => {
-      errors.push(`Activities: ${e instanceof Error ? e.message : 'failed'}`);
+    fetchTemperature(range).then((data) => { temperature = data; }).catch((error) => {
+      errors.push(`Temperature: ${describe(error)}`);
     }),
-    fetchTemperature().then((d) => { temperature = d; }).catch((e) => {
-      errors.push(`Temperature: ${e instanceof Error ? e.message : 'failed'}`);
+    fetchSeries(range).then((data) => { series = data; }).catch((error) => {
+      errors.push(`Series: ${describe(error)}`);
     }),
-    fetchSeries().then((d) => { series = d; }).catch((e) => {
-      errors.push(`Series: ${e instanceof Error ? e.message : 'failed'}`);
+    fetchHeartRate(range).then((data) => { heartRate = data; }).catch((error) => {
+      errors.push(`Heart rate: ${describe(error)}`);
     }),
-    fetchHeartRate().then((d) => { heartRate = d; }).catch((e) => {
-      errors.push(`Heart rate: ${e instanceof Error ? e.message : 'failed'}`);
-    }),
-    fetchCoverage().then((d) => { coverage = d; }).catch((e) => {
-      coverageError = e instanceof Error ? e.message : 'failed';
+    fetchCoverage().then((data) => { coverage = data; }).catch((error) => {
+      coverageError = describe(error);
     }),
   ]);
 
@@ -69,9 +71,9 @@ export default async function HomePage() {
       {errors.length > 0 ? (
         <div className="mb-6 space-y-2 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-amber-100">
           <p className="font-bold">Some signals are unavailable</p>
-          {errors.map((e) => (
-            <p key={e} className="text-sm text-amber-200/90">
-              {e}
+          {errors.map((entry) => (
+            <p key={entry} className="text-sm text-amber-200/90">
+              {entry}
             </p>
           ))}
         </div>
@@ -80,8 +82,7 @@ export default async function HomePage() {
       <DashboardApp
         days={days}
         sleep={sleep}
-        workouts={workouts}
-        activitySessions={activitySessions}
+        activities={activities}
         temperature={temperature}
         series={series}
         heartRate={heartRate}

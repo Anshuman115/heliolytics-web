@@ -10,29 +10,34 @@ import {
   YAxis,
 } from 'recharts';
 import type { HeartRateSample } from '@/lib/api/types';
+import { formatDayKey, formatIstInstant } from '@/lib/dates';
 
-type HeartRateChartProps = { samples: HeartRateSample[] };
+/** Continuous heart rate for the selected IST day from measured 0x01 samples. */
+export function HeartRateChart({
+  dayKey,
+  samples,
+}: {
+  dayKey: string | null;
+  samples: HeartRateSample[];
+}) {
+  const data = [...samples]
+    .sort((a, b) => a.sampledAt.localeCompare(b.sampledAt))
+    .map((sample) => ({
+      time: formatIstInstant(sample.sampledAt, 'time'),
+      bpm: sample.bpm,
+    }));
 
-/** Continuous heart rate for the most recent day with data (time-of-day x-axis). */
-export function HeartRateChart({ samples }: HeartRateChartProps) {
-  if (!samples.length) {
+  if (!data.length) {
     return <div className="card p-8 text-center text-sm text-slate-500">No continuous HR data</div>;
   }
-
-  const latestDay = samples.reduce((m, s) => (s.dayKey > m ? s.dayKey : m), samples[0].dayKey);
-  const data = samples
-    .filter((s) => s.dayKey === latestDay)
-    .sort((a, b) => a.sampledAt.localeCompare(b.sampledAt))
-    .map((s) => ({
-      t: new Date(s.sampledAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
-      bpm: s.bpm,
-    }));
 
   return (
     <div className="card p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="text-sm font-bold text-slate-200">Heart rate</h3>
-        <span className="text-xs text-slate-500">{latestDay}</span>
+        <span className="text-xs text-slate-500">
+          {dayKey === null ? 'IST' : `${formatDayKey(dayKey, 'long')} IST`}
+        </span>
       </div>
       <ResponsiveContainer width="100%" height={240}>
         <AreaChart data={data}>
@@ -43,8 +48,8 @@ export function HeartRateChart({ samples }: HeartRateChartProps) {
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-          <XAxis dataKey="t" tick={{ fill: '#94a3b8', fontSize: 11 }} minTickGap={48} />
-          <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} domain={[40, 'dataMax + 10']} />
+          <XAxis dataKey="time" tick={{ fill: '#94a3b8', fontSize: 11 }} minTickGap={48} />
+          <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} unit=" bpm" width={52} domain={[40, 'dataMax + 10']} />
           <Tooltip contentStyle={{ background: '#141414', border: '1px solid #ffffff1a', borderRadius: 8 }} />
           <Area type="monotone" dataKey="bpm" stroke="#ff453a" strokeWidth={2} fill="url(#hrFill)" dot={false} />
         </AreaChart>

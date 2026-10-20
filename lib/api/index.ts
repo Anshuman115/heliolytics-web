@@ -1,112 +1,116 @@
-import { apiGet } from './client';
-import { flattenSeriesDays, flattenTemperatureDays } from './compact';
-import { API_ENDPOINTS, METRICS_DAYS, WORKOUT_DAYS } from './endpoints';
+import 'server-only';
+import type { IstRange } from '@/lib/dates';
+import { apiGet, type ApiFetcher } from './client';
+import {
+  ContractError,
+  expandHeartRateDays,
+  expandSeriesDays,
+  expandTemperatureDays,
+} from './compact';
+import { API_ENDPOINTS } from './endpoints';
 import type {
-  ActivitySessionMetric,
+  Activity,
+  CompactDay,
+  Coverage,
   DayMetric,
-  HeartRateDayCompact,
   HeartRateSample,
+  SeriesDay,
   SeriesSample,
-  SeriesDayCompact,
-  SleepMetric,
-  SyncCoverage,
+  SleepDay,
   TemperatureSample,
-  TemperatureDayCompact,
-  WorkoutMetric,
 } from './types';
 
-export type {
-  ActivitySessionMetric,
-  DayMetric,
-  SleepMetric,
-  WorkoutMetric,
-  TemperatureSample,
-  SeriesSample,
-  HealthSample,
-  TempSample,
-  HeartRateSample,
-  SyncCoverage,
-} from './types';
+export type FetchOptions = { fetcher?: ApiFetcher };
 
-export { METRICS_DAYS, WORKOUT_DAYS } from './endpoints';
-
-function range(days: number) {
-  const to = new Date();
-  const from = new Date();
-  from.setDate(from.getDate() - days);
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  return { from: fmt(from), to: fmt(to) };
-}
-
-export async function fetchDays(): Promise<DayMetric[]> {
-  const { from, to } = range(METRICS_DAYS);
-  const body = await apiGet<{ days: DayMetric[] }>(
-    `${API_ENDPOINTS.days}?from=${from}&to=${to}`,
-  );
-  return body.days ?? [];
-}
-
-export async function fetchSleep(): Promise<SleepMetric[]> {
-  const { from, to } = range(METRICS_DAYS);
-  const body = await apiGet<{ sleep: SleepMetric[] }>(
-    `${API_ENDPOINTS.sleep}?from=${from}&to=${to}`,
-  );
-  return body.sleep ?? [];
-}
-
-export async function fetchWorkouts(): Promise<WorkoutMetric[]> {
-  const { from, to } = range(WORKOUT_DAYS);
-  const body = await apiGet<{ workouts: WorkoutMetric[] }>(
-    `${API_ENDPOINTS.workouts}?from=${from}&to=${to}`,
-  );
-  return body.workouts ?? [];
-}
-
-export async function fetchTemperature(): Promise<TemperatureSample[]> {
-  const { from, to } = range(METRICS_DAYS);
-  const body = await apiGet<{ days: TemperatureDayCompact[] }>(
-    `${API_ENDPOINTS.temperature}?from=${from}&to=${to}`,
-  );
-  return flattenTemperatureDays(body.days ?? []);
-}
-
-export async function fetchSeries(): Promise<SeriesSample[]> {
-  const { from, to } = range(METRICS_DAYS);
-  const body = await apiGet<{ days: SeriesDayCompact[] }>(
-    `${API_ENDPOINTS.series}?from=${from}&to=${to}`,
-  );
-  return flattenSeriesDays(body.days ?? []);
-}
-
-export async function fetchActivitySessions(): Promise<ActivitySessionMetric[]> {
-  const { from, to } = range(WORKOUT_DAYS);
-  const body = await apiGet<{ activitySessions: ActivitySessionMetric[] }>(
-    `${API_ENDPOINTS.activitySessions}?from=${from}&to=${to}`,
-  );
-  return body.activitySessions ?? [];
-}
-
-export async function fetchHeartRate(): Promise<HeartRateSample[]> {
-  const { from, to } = range(METRICS_DAYS);
-  const body = await apiGet<{ days: HeartRateDayCompact[] }>(
-    `${API_ENDPOINTS.hr}?from=${from}&to=${to}`,
-  );
-  const out: HeartRateSample[] = [];
-  for (const d of body.days ?? []) {
-    const start = new Date(d.startTime).getTime();
-    if (!Number.isFinite(start) || !d.offsets || !d.values) continue;
-    const n = Math.min(d.offsets.length, d.values.length);
-    for (let i = 0; i < n; i++) {
-      out.push({
-        dayKey: d.dayKey,
-        sampledAt: new Date(start + d.offsets[i] * 1000).toISOString(),
-        bpm: d.values[i],
-      });
-    }
+function readList<T>(path: string, body: unknown, field: string): T[] {
+  if (typeof body !== 'object' || body === null || !(field in body)) {
+    throw new ContractError(`contract error: ${path} response is missing ${field}`);
   }
-  return out;
+  // Boundary assertion: the root is a JSON object and the key was just checked.
+  const record = body as Record<string, unknown>;
+  const value = record[field];
+  if (!Array.isArray(value)) {
+    throw new ContractError(`contract error: ${path} response field ${field} is not a list`);
+  }
+  return value;
 }
 
-export async function fetchCoverage(): Promise<SyncCoverage> {
-  return apiGet<SyncCoverage>(API_ENDPOINTS.coverage);
+function ranged(path: string, range: IstRange): string {
+  return `${path}?from=${range.from}&to=${range.to}`;
+}
+
+export async function fetchDays(
+  range: IstRange,
+  options: FetchOptions = {},
+): Promise<DayMetric[]> {
+  const body = await apiGet(ranged(API_ENDPOINTS.days, range), options);
+  return readList<DayMetric>(API_ENDPOINTS.days, body, 'days');
+}
+
+export async function fetchSleep(
+  range: IstRange,
+  options: FetchOptions = {},
+): Promise<SleepDay[]> {
+  const body = await apiGet(ranged(API_ENDPOINTS.sleep, range), options);
+  return readList<SleepDay>(API_ENDPOINTS.sleep, body, 'days');
+}
+
+export async function fetchActivities(
+  range: IstRange,
+  options: FetchOptions = {},
+): Promise<Activity[]> {
+  const body = await apiGet(ranged(API_ENDPOINTS.activities, range), options);
+  return readList<Activity>(API_ENDPOINTS.activities, body, 'activities');
+}
+
+export async function fetchTemperature(
+  range: IstRange,
+  options: FetchOptions = {},
+): Promise<TemperatureSample[]> {
+  const body = await apiGet(ranged(API_ENDPOINTS.temperature, range), options);
+  return expandTemperatureDays(readList<CompactDay>(API_ENDPOINTS.temperature, body, 'days'));
+}
+
+export async function fetchSeries(
+  range: IstRange,
+  options: FetchOptions = {},
+): Promise<SeriesSample[]> {
+  const body = await apiGet(ranged(API_ENDPOINTS.series, range), options);
+  return expandSeriesDays(readList<SeriesDay>(API_ENDPOINTS.series, body, 'days'));
+}
+
+export async function fetchHeartRate(
+  range: IstRange,
+  options: FetchOptions = {},
+): Promise<HeartRateSample[]> {
+  const body = await apiGet(ranged(API_ENDPOINTS.hr, range), options);
+  return expandHeartRateDays(readList<CompactDay>(API_ENDPOINTS.hr, body, 'days'));
+}
+
+export async function fetchCoverage(options: FetchOptions = {}): Promise<Coverage> {
+  const body = await apiGet(API_ENDPOINTS.coverage, options);
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    throw new ContractError('contract error: coverage response is not an object');
+  }
+  // Boundary assertion: the API returns a JSON object with the documented keys.
+  const coverage = body as Record<string, unknown>;
+  const hasData = coverage.hasData;
+  if (typeof hasData !== 'boolean') {
+    throw new ContractError('contract error: coverage response is missing hasData');
+  }
+  const rawTypes = coverage.types;
+  if (typeof rawTypes !== 'object' || rawTypes === null || Array.isArray(rawTypes)) {
+    throw new ContractError('contract error: coverage response is missing types');
+  }
+  const typeEntries = rawTypes as Record<string, unknown>;
+  const types: Record<string, string | null> = {};
+  for (const [code, value] of Object.entries(typeEntries)) {
+    types[code] = typeof value === 'string' ? value : null;
+  }
+  return {
+    hasData,
+    lastIngestAt: typeof coverage.lastIngestAt === 'string' ? coverage.lastIngestAt : null,
+    dataThrough: typeof coverage.dataThrough === 'string' ? coverage.dataThrough : null,
+    types,
+  };
 }

@@ -27,8 +27,13 @@ export function ScoreRing({ value, max = 100, label, color, size = 140, sub }: S
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="-rotate-90">
+      <div
+        className="relative"
+        style={{ width: size, height: size }}
+        role="img"
+        aria-label={value == null ? `${label} not available` : `${label} ${Math.round(value)}${sub === undefined ? '' : ` ${sub}`}`}
+      >
+        <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
           <circle
             cx={size / 2}
@@ -51,6 +56,7 @@ export function ScoreRing({ value, max = 100, label, color, size = 140, sub }: S
         </div>
       </div>
       <span className="text-sm font-bold text-slate-200">{label}</span>
+      {value == null ? <span className="text-[11px] text-slate-500">Not available</span> : null}
     </div>
   );
 }

@@ -9,33 +9,47 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { SleepStagePoint } from '@/lib/api/types';
+import type { SleepStage } from '@/lib/api/types';
+import { formatIstInstant } from '@/lib/dates';
 
-type HypnogramChartProps = { stages?: SleepStagePoint[] };
+const LEVEL: Record<SleepStage['type'], number> = { 7: 3, 8: 2, 4: 1, 5: 0 };
+const LABELS = ['Deep', 'Light', 'REM', 'Awake'];
 
-// Stage type → vertical level (Awake top, Deep bottom) + label.
-const LEVEL: Record<number, number> = { 7: 3, 8: 2, 4: 1, 5: 0 }; // wake, rem, light, deep
-const LABEL = ['Deep', 'Light', 'REM', 'Awake'];
+type Point = { at: number; level: number | null };
 
-function hhmm(iso: string) {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-}
+/**
+ * Stored stages only. Spans are end-exclusive, the final end is shown, and a
+ * gap between stored stages is a break rather than a guessed stage.
+ */
+export function HypnogramChart({ stages }: { stages: SleepStage[] }) {
+  const sorted = [...stages].sort((a, b) => a.start.localeCompare(b.start));
+  const points: Point[] = [];
+  let previousEnd: number | null = null;
 
-export function HypnogramChart({ stages }: HypnogramChartProps) {
-  if (!stages || stages.length === 0) {
+  for (const stage of sorted) {
+    const start = new Date(stage.start).getTime();
+    const end = new Date(stage.end).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+    if (previousEnd !== null && start > previousEnd) points.push({ at: previousEnd, level: null });
+    points.push({ at: start, level: LEVEL[stage.type] });
+    points.push({ at: end, level: LEVEL[stage.type] });
+    previousEnd = end;
+  }
+
+  if (points.length === 0) {
     return <div className="card p-8 text-center text-sm text-slate-500">No sleep stage timeline</div>;
   }
-  const sorted = [...stages].sort((a, b) => a.start.localeCompare(b.start));
-  const data = sorted.map((s) => ({ t: hhmm(s.start), level: LEVEL[s.type] ?? 1 }));
-  // close the staircase at the final wake time
-  const last = sorted[sorted.length - 1];
-  data.push({ t: hhmm(last.end), level: LEVEL[last.type] ?? 1 });
 
   return (
     <div className="card p-4">
-      <h3 className="mb-3 text-sm font-medium text-slate-300">Sleep stages (hypnogram)</h3>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-sm font-medium text-slate-300">Sleep stages (hypnogram)</h3>
+        <span className="text-xs text-slate-500">
+          {formatIstInstant(sorted[0].start, 'time')} to {formatIstInstant(sorted[sorted.length - 1].end, 'time')}
+        </span>
+      </div>
       <ResponsiveContainer width="100%" height={200}>
-        <AreaChart data={data} margin={{ left: 8, right: 8 }}>
+        <AreaChart data={points} margin={{ left: 8, right: 8 }}>
           <defs>
             <linearGradient id="hypFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#7c8cff" stopOpacity={0.35} />
@@ -43,20 +57,28 @@ export function HypnogramChart({ stages }: HypnogramChartProps) {
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-          <XAxis dataKey="t" tick={{ fill: '#94a3b8', fontSize: 11 }} minTickGap={40} />
+          <XAxis
+            dataKey="at"
+            type="number"
+            domain={['dataMin', 'dataMax']}
+            tick={{ fill: '#94a3b8', fontSize: 11 }}
+            minTickGap={40}
+            tickFormatter={(value: number) => formatIstInstant(new Date(value).toISOString(), 'time')}
+          />
           <YAxis
             type="number"
             domain={[0, 3]}
             ticks={[0, 1, 2, 3]}
-            tickFormatter={(v: number) => LABEL[v] ?? ''}
+            tickFormatter={(value: number) => LABELS[value] ?? ''}
             tick={{ fill: '#94a3b8', fontSize: 11 }}
             width={52}
           />
           <Tooltip
             contentStyle={{ background: '#141414', border: '1px solid #ffffff1a', borderRadius: 8 }}
-            formatter={(v: number) => [LABEL[v] ?? '', 'Stage']}
+            labelFormatter={(value) => formatIstInstant(new Date(Number(value)).toISOString(), 'time')}
+            formatter={(value) => LABELS[Number(value)] ?? ''}
           />
-          <Area type="stepAfter" dataKey="level" stroke="#8b9bff" strokeWidth={2} fill="url(#hypFill)" dot={false} isAnimationActive />
+          <Area type="stepAfter" dataKey="level" stroke="#8b9bff" strokeWidth={2} fill="url(#hypFill)" dot={false} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
