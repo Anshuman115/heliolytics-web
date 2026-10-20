@@ -101,7 +101,7 @@ describe('signing vectors', () => {
 
 describe('production request signing', () => {
   it('uses a fresh 16 byte nonce for every request', () => {
-    vi.stubEnv('HELIOLYTICS_API_KEY', `web.${'ab'.repeat(32)}`);
+    vi.stubEnv('HELIOLYTICS_WEB_API_KEY', `web.${'ab'.repeat(32)}`);
     const first = signRequest({
       method: 'GET',
       escapedPath: '/api/daily-metrics',
@@ -123,8 +123,20 @@ describe('production request signing', () => {
     expect(first.contentSha256).toBe('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
   });
 
+  it('refuses to sign when only the retired name is set', () => {
+    vi.stubEnv('HELIOLYTICS_WEB_API_KEY', '');
+    vi.stubEnv('HELIOLYTICS_API_KEY', `web.${'ab'.repeat(32)}`);
+    expect(() => signRequest({
+      method: 'GET',
+      escapedPath: '/health',
+      rawQuery: '',
+      contentType: '',
+      body: new Uint8Array(0),
+    })).toThrow(/Invalid HELIOLYTICS_WEB_API_KEY: missing/);
+  });
+
   it('refuses a key that is not a web key', () => {
-    vi.stubEnv('HELIOLYTICS_API_KEY', `phone.${'ab'.repeat(32)}`);
+    vi.stubEnv('HELIOLYTICS_WEB_API_KEY', `phone.${'ab'.repeat(32)}`);
     expect(() => signRequest({
       method: 'GET',
       escapedPath: '/health',

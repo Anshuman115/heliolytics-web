@@ -34,7 +34,7 @@ if (!['127.0.0.1', '::1', '[::1]'].includes(target.hostname)) {
 }
 
 process.env.API_INTERNAL_URL = baseUrl;
-process.env.HELIOLYTICS_API_KEY = apiKey;
+process.env.HELIOLYTICS_WEB_API_KEY = apiKey;
 
 const RECENT = istRange(30);
 const EMPTY = { from: '2000-01-01', to: '2000-01-02' };

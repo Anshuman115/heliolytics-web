@@ -15,7 +15,7 @@ const validEnv: Record<string, string | undefined> = {
   NODE_ENV: 'production',
   HELIOLYTICS_WEB_PASSWORD_HASH: PASSWORD_HASH,
   HELIOLYTICS_SESSION_SECRET: SESSION_SECRET,
-  HELIOLYTICS_API_KEY: `web.${WEB_SECRET}`,
+  HELIOLYTICS_WEB_API_KEY: `web.${WEB_SECRET}`,
   API_INTERNAL_URL: 'http://127.0.0.1:8080',
   TRUST_PROXY: 'true',
   COOKIE_SECURE: 'true',
@@ -47,8 +47,28 @@ describe('runtime configuration', () => {
   it('requires each field by name', () => {
     expect(failure({ ...validEnv, HELIOLYTICS_WEB_PASSWORD_HASH: undefined })).toMatch(/HELIOLYTICS_WEB_PASSWORD_HASH/);
     expect(failure({ ...validEnv, HELIOLYTICS_SESSION_SECRET: undefined })).toMatch(/HELIOLYTICS_SESSION_SECRET/);
-    expect(failure({ ...validEnv, HELIOLYTICS_API_KEY: undefined })).toMatch(/HELIOLYTICS_API_KEY/);
+    expect(failure({ ...validEnv, HELIOLYTICS_WEB_API_KEY: undefined })).toMatch(/HELIOLYTICS_WEB_API_KEY/);
     expect(failure({ ...validEnv, API_INTERNAL_URL: undefined })).toMatch(/API_INTERNAL_URL/);
+  });
+
+  it('reads the web key only from HELIOLYTICS_WEB_API_KEY', () => {
+    const retiredEnv: Record<string, string | undefined> = { ...validEnv };
+    delete retiredEnv.HELIOLYTICS_WEB_API_KEY;
+    const message = failure({ ...retiredEnv, HELIOLYTICS_API_KEY: `web.${WEB_SECRET}` });
+    expect(message).toMatch(/Invalid HELIOLYTICS_WEB_API_KEY: missing/);
+    expect(message).not.toContain(WEB_SECRET);
+  });
+
+  it('treats an empty web key as missing', () => {
+    expect(failure({ ...validEnv, HELIOLYTICS_WEB_API_KEY: '' }))
+      .toMatch(/Invalid HELIOLYTICS_WEB_API_KEY: missing/);
+  });
+
+  it('does not accept a phone key', () => {
+    const webKeyOnly: Record<string, string | undefined> = { ...validEnv };
+    delete webKeyOnly.HELIOLYTICS_WEB_API_KEY;
+    expect(failure({ ...webKeyOnly, HELIOLYTICS_PHONE_API_KEY: `phone.${WEB_SECRET}` }))
+      .toMatch(/Invalid HELIOLYTICS_WEB_API_KEY: missing/);
   });
 
   it('rejects a plaintext or differently parameterised password verifier', () => {
@@ -75,18 +95,21 @@ describe('runtime configuration', () => {
   });
 
   it('accepts only one web key and refuses a key ring', () => {
-    expect(failure({ ...validEnv, HELIOLYTICS_API_KEY: `web.${WEB_SECRET.toUpperCase()}` }))
-      .toMatch(/HELIOLYTICS_API_KEY/);
-    expect(failure({ ...validEnv, HELIOLYTICS_API_KEY: `web.${WEB_SECRET.slice(1)}` }))
-      .toMatch(/HELIOLYTICS_API_KEY/);
-    expect(failure({ ...validEnv, HELIOLYTICS_API_KEY: `web.${WEB_SECRET},phone.${'6b'.repeat(32)}` }))
-      .toMatch(/HELIOLYTICS_API_KEY/);
-    expect(failure({ ...validEnv, HELIOLYTICS_API_KEY: `phone.${WEB_SECRET}` }))
+    const malformed = failure({ ...validEnv, HELIOLYTICS_WEB_API_KEY: `web.${WEB_SECRET.toUpperCase()}` });
+    expect(malformed).toMatch(/HELIOLYTICS_WEB_API_KEY/);
+    expect(malformed).not.toContain(WEB_SECRET);
+    expect(failure({ ...validEnv, HELIOLYTICS_WEB_API_KEY: `web.${WEB_SECRET.slice(1)}` }))
+      .toMatch(/HELIOLYTICS_WEB_API_KEY/);
+    expect(failure({ ...validEnv, HELIOLYTICS_WEB_API_KEY: WEB_SECRET }))
+      .toMatch(/HELIOLYTICS_WEB_API_KEY/);
+    expect(failure({ ...validEnv, HELIOLYTICS_WEB_API_KEY: `web.${WEB_SECRET},phone.${'6b'.repeat(32)}` }))
+      .toMatch(/HELIOLYTICS_WEB_API_KEY/);
+    expect(failure({ ...validEnv, HELIOLYTICS_WEB_API_KEY: `phone.${WEB_SECRET}` }))
       .toMatch(/kid must be web/);
   });
 
   it('refuses the published example secret', () => {
-    const message = failure({ ...validEnv, HELIOLYTICS_API_KEY: `web.${EXAMPLE_SECRET_HEX}` });
+    const message = failure({ ...validEnv, HELIOLYTICS_WEB_API_KEY: `web.${EXAMPLE_SECRET_HEX}` });
     expect(message).toMatch(/published example secret/);
     expect(message).not.toContain(EXAMPLE_SECRET_HEX);
   });

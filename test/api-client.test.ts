@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe('signed transport', () => {
   it('signs exactly the URL it fetches, with no bearer token', async () => {
-    vi.stubEnv('HELIOLYTICS_API_KEY', API_KEY);
+    vi.stubEnv('HELIOLYTICS_WEB_API_KEY', API_KEY);
     vi.stubEnv('API_INTERNAL_URL', 'http://127.0.0.1:8080');
 
     let seenUrl = '';
@@ -43,7 +43,7 @@ describe('signed transport', () => {
   });
 
   it('keeps 429 metadata without retrying', async () => {
-    vi.stubEnv('HELIOLYTICS_API_KEY', API_KEY);
+    vi.stubEnv('HELIOLYTICS_WEB_API_KEY', API_KEY);
     let calls = 0;
     const fetcher: ApiFetcher = async () => {
       calls += 1;
@@ -67,7 +67,7 @@ describe('signed transport', () => {
   });
 
   it('reports a 401 without retrying or leaking the response body', async () => {
-    vi.stubEnv('HELIOLYTICS_API_KEY', API_KEY);
+    vi.stubEnv('HELIOLYTICS_WEB_API_KEY', API_KEY);
     let calls = 0;
     const fetcher: ApiFetcher = async () => {
       calls += 1;
@@ -87,7 +87,7 @@ describe('signed transport', () => {
   });
 
   it('replaces an unparseable body with a bounded message', async () => {
-    vi.stubEnv('HELIOLYTICS_API_KEY', API_KEY);
+    vi.stubEnv('HELIOLYTICS_WEB_API_KEY', API_KEY);
     const raw = '<html><body>stack trace and secret material</body></html>';
     const fetcher: ApiFetcher = async () => new Response(raw, { status: 500 });
 
@@ -103,7 +103,7 @@ describe('signed transport', () => {
   });
 
   it('aborts a stalled request and clears the timer', async () => {
-    vi.stubEnv('HELIOLYTICS_API_KEY', API_KEY);
+    vi.stubEnv('HELIOLYTICS_WEB_API_KEY', API_KEY);
     let aborted = false;
     const fetcher: ApiFetcher = (_url, init) => {
       const { promise, reject } = Promise.withResolvers<Response>();
