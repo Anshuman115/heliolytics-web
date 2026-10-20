@@ -2,12 +2,11 @@
 
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { safeRedirectPath } from '@/lib/auth/redirect';
 import { BrandMark } from '@/components/BrandMark';
 
 export default function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -32,8 +31,8 @@ export default function LoginForm() {
         setError(message);
         return;
       }
-      router.replace(safeRedirectPath(params.get('from')));
-      router.refresh();
+      // One full navigation renders the dashboard once with the session cookie.
+      window.location.replace(safeRedirectPath(params.get('from')));
     } catch {
       setError('Could not reach the server');
     } finally {

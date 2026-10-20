@@ -30,7 +30,7 @@ export function TemperatureChart({ samples }: { samples: TemperatureSample[] }) 
   }
 
   return (
-    <div className="card p-4">
+    <div className="card overflow-x-hidden p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="text-sm font-bold text-slate-200">On-wrist skin temperature samples</h3>
         <span className="text-xs text-slate-500">IST</span>

@@ -1,5 +1,5 @@
 import type { ComponentName, DayMetric } from '@/lib/api/types';
-import { formatNumber } from '@/lib/dashboard';
+import { formatNumber, readinessBandLabel } from '@/lib/dashboard';
 
 const LIMITATION =
   'Heliolytics readiness is a research-informed product score. Its weights are product choices, not a validated medical formula or a universal industry standard, and it is not a Zepp or WHOOP equivalent.';
@@ -46,9 +46,10 @@ export function ReadinessDetails({ day }: { day?: DayMetric }) {
     );
   }
 
+  const band = readinessBandLabel(day?.readinessBand);
   const statusText =
     components.status === 'scored'
-      ? `Scored ${formatNumber(components.score, 0) ?? 'n/a'} of 100`
+      ? `Scored ${formatNumber(components.score, 0) ?? 'n/a'} of 100${band ? `, band ${band}` : ''}`
       : components.status === 'calibrating'
         ? `Calibrating with ${components.baselineNights} baseline nights`
         : components.status === 'no_baseline'

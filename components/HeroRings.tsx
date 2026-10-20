@@ -1,6 +1,6 @@
 import type { DayMetric } from '@/lib/api/types';
 import { ScoreRing } from '@/components/ui/ScoreRing';
-import { formatNumber } from '@/lib/dashboard';
+import { formatNumber, readinessBandLabel } from '@/lib/dashboard';
 import { formatDayKey } from '@/lib/dates';
 
 function readinessColor(band: DayMetric['readinessBand']): string {
@@ -49,7 +49,13 @@ export function HeroRings({
           <ScoreRing value={day.sleepScore} label="Sleep" color="#7fa8c2" sub="score" />
         </div>
         <div className="flex items-center justify-center rounded-2xl bg-black/10 py-4 sm:py-5">
-          <ScoreRing value={day.readiness} label="Readiness" color={readinessColor(day.readinessBand)} sub="readiness" />
+          <ScoreRing
+            value={day.readiness}
+            label="Readiness"
+            color={readinessColor(day.readinessBand)}
+            sub="readiness"
+            band={readinessBandLabel(day.readinessBand)}
+          />
         </div>
         <div className="flex items-center justify-center rounded-2xl bg-black/10 py-4 sm:py-5">
           <ScoreRing value={day.paiScore} label="PAI" color="#009de5" sub="points" />

@@ -1,6 +1,7 @@
 import type {
   Activity,
   DayMetric,
+  ReadinessBand,
   SeriesMetric,
   SeriesSample,
   SleepDay,
@@ -155,6 +156,14 @@ export function formatMinutes(minutes: number | null | undefined): string {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   return hours > 0 ? `${hours}h ${rest}m` : `${rest}m`;
+}
+
+/** Server readiness band word; null when the server stored no score. */
+export function readinessBandLabel(band: ReadinessBand | null | undefined): string | null {
+  if (band === 'good') return 'Good';
+  if (band === 'fair') return 'Fair';
+  if (band === 'low') return 'Low';
+  return null;
 }
 
 /** Display rounding only; null and undefined stay null so callers can say `n/a`. */

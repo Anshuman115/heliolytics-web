@@ -41,7 +41,7 @@ export function HypnogramChart({ stages }: { stages: SleepStage[] }) {
   }
 
   return (
-    <div className="card p-4">
+    <div className="card overflow-x-hidden p-4">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-medium text-slate-300">Sleep stages (hypnogram)</h3>
         <span className="text-xs text-slate-500">

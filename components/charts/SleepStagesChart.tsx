@@ -32,7 +32,7 @@ export function SleepStagesChart({ days }: { days: DayMetric[] }) {
   }
 
   return (
-    <div className="card p-4">
+    <div className="card overflow-x-hidden p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="text-sm font-bold text-slate-200">Sleep stages</h3>
         <span className="text-xs text-slate-500">Daily rollup totals</span>

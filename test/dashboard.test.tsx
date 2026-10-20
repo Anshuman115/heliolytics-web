@@ -392,6 +392,45 @@ describe('persisted readiness', () => {
     expect(baselineText).not.toContain('Readiness 0');
     expect(dataText).not.toContain('Readiness 0');
   });
+
+  it('shows the stored readiness band as text and in the ring name', () => {
+    const day = dayMetric({
+      dayKey: '2026-10-19',
+      readiness: 55,
+      readinessStatus: 'scored',
+      readinessBand: 'fair',
+      readinessComponents: { ...components, status: 'scored', score: 55, baselineNights: 19 },
+    });
+
+    const markup = renderToStaticMarkup(
+      <OverviewView dayKey="2026-10-19" day={day} days={[day]} series={[]} isToday />,
+    );
+    const text = visibleText(markup);
+
+    expect(text).toContain('Fair');
+    expect(text).toContain('Scored 55 of 100, band Fair');
+    expect(markup).toContain('aria-label="Readiness 55, band Fair"');
+  });
+
+  it('adds no band text when the stored band is null', () => {
+    const day = dayMetric({
+      dayKey: '2026-10-18',
+      readiness: null,
+      readinessStatus: 'calibrating',
+      readinessBand: null,
+      readinessComponents: components,
+    });
+
+    const markup = renderToStaticMarkup(
+      <OverviewView dayKey="2026-10-18" day={day} days={[day]} series={[]} isToday={false} />,
+    );
+    const text = visibleText(markup);
+
+    expect(markup).toContain('aria-label="Readiness not available"');
+    expect(markup).not.toContain(', band ');
+    expect(text).toContain('Not available');
+    expect(text).not.toMatch(/\b(Good|Fair|Low)\b/);
+  });
 });
 
 describe('units and missing values', () => {

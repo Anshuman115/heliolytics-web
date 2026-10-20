@@ -54,7 +54,7 @@ function ChartShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="card p-4">
+    <div className="card overflow-x-hidden p-4">
       <h3 className="mb-3 text-sm font-bold text-slate-200">{title}</h3>
       {children}
     </div>
